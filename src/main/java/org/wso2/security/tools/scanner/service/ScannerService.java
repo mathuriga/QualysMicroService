@@ -40,18 +40,13 @@ import java.io.UnsupportedEncodingException;
 /**
  * Service class to engage the controller method with the scannerClass.
  */
-@Component("ScannerService")
-@Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
-public class ScannerService {
-
+@Component("ScannerService") @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON) public class ScannerService {
 
     private static final Logger log = Logger.getLogger(ScannerService.class);
     private static volatile boolean isScanStart = false;
 
-    @Autowired
-    Scanner scanner;
-    @Autowired
-    private ApplicationContext appContext;
+    @Autowired Scanner scanner;
+    @Autowired private ApplicationContext appContext;
 
     ScannerService() {
         if (log.isDebugEnabled()) {
@@ -70,8 +65,7 @@ public class ScannerService {
             scannerClass = (Class<Scanner>) Class.forName(getScannerInstanceOfScanType().getName());
             scanner = scannerClass.newInstance();
             scanner.init();
-        } catch (InstantiationException | IllegalAccessException | FileNotFoundException
-                | UnsupportedEncodingException | ClassNotFoundException e) {
+        } catch (InstantiationException | IllegalAccessException | FileNotFoundException | UnsupportedEncodingException | ClassNotFoundException e) {
             log.error("Error occured while initiating the scannerClass.", e);
             throw new ScannerException("Error occured while creating the instance of the scanner class. ", e);
         }
@@ -87,7 +81,12 @@ public class ScannerService {
         ScannerResponse scannerResponse = new ScannerResponse();
         if (!isScanStart) {
             log.info("Start scan API is being called. ");
-            scannerResponse = scanner.startScan(scannerRequest);
+            try {
+                scannerResponse = scanner.startScan(scannerRequest);
+            } catch (ScannerException | InvalidRequestException e) {
+                    log.error(e);
+                throw e;
+            }
             if (scannerResponse.getIsSuccessful()) {
                 isScanStart = true;
             }

@@ -23,11 +23,6 @@ package org.wso2.security.tools.scanner.scanner;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -40,17 +35,13 @@ import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.exception.ScannerException;
 import org.wso2.security.tools.scanner.handler.QualysApiInvoker;
 import org.wso2.security.tools.scanner.handler.QualysScanHandler;
-import org.wso2.security.tools.scanner.utils.RequestBodyBuilder;
+import org.wso2.security.tools.scanner.handler.StatusChecker;
 import org.wso2.security.tools.scanner.utils.ScannerRequest;
 import org.wso2.security.tools.scanner.utils.ScannerResponse;
 import org.xml.sax.SAXException;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -66,9 +57,10 @@ import javax.xml.parsers.ParserConfigurationException;
 @Component("QualysScanner") public class QualysScanner extends AbstractScanner {
     private final Log log = LogFactory.getLog(QualysScanner.class);
     //    private String basicAuth = null;
-    private String host;
+    public static String host;
     private QualysScannerParam qualysScannerParam;
     QualysScanHandler qualysScanHandler;
+    // TODO: 4/2/19 introduce atomic string to check status and decide how to handle
 
     @Override public void init() throws ScannerException {
         this.host = ConfigurationReader.getConfigProperty(QualysScannerConstants.HOST);
@@ -82,9 +74,13 @@ import javax.xml.parsers.ParserConfigurationException;
             throws InvalidRequestException, ScannerException {
         setQualysScannerParam(scannerRequest);
         String authScriptId = null;
-        authScriptId=qualysScanHandler.prepareScan(qualysScannerParam,host);
-        ScannerResponse scannerResponse = qualysScanHandler.launchScan(qualysScannerParam,authScriptId,host);
+        authScriptId = qualysScanHandler.prepareScan(qualysScannerParam, host);
+        ScannerResponse scannerResponse = qualysScanHandler.launchScan(qualysScannerParam, authScriptId, host);
         //TODO validation of file path
+
+        StatusChecker statusChecker = new StatusChecker(qualysScanHandler.getQualysApiInvoker(),
+                scannerResponse.getScanID(), scannerRequest.getScanId(), 1, 1);
+        statusChecker.activateStatusChecker();
         return scannerResponse;
     }
 

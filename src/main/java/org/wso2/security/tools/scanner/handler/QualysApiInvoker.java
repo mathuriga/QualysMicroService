@@ -6,6 +6,7 @@ import org.apache.http.Consts;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
@@ -27,6 +28,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.util.HashMap;
+import java.util.Map;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -53,8 +56,7 @@ public class QualysApiInvoker {
      * @return a boolean value to indicate the operation success
      * @throws ScannerException
      */
-    public void generatePrerequestieFile(String endPoint, String filePath)
-            throws ScannerException {
+    public void generatePrerequestieFile(String endPoint, String filePath) throws ScannerException {
         String result;
         File tempFile = new File(filePath);
         boolean exists = tempFile.exists();
@@ -97,8 +99,7 @@ public class QualysApiInvoker {
         }
     }
 
-    public String addAuthenticationScript(String host, String authScriptRequestBody)
-            throws ScannerException {
+    public String addAuthenticationScript(String host, String authScriptRequestBody) throws ScannerException {
         HttpPost postRequest = new HttpPost(host.concat(QualysScannerConstants.QUALYS_ADD_AUTH_SCRIPT_API));
         postRequest.addHeader("Authorization", "Basic " + basicAuth);
         HttpClient client = HttpClientBuilder.create().build();
@@ -108,15 +109,14 @@ public class QualysApiInvoker {
             postRequest.setEntity(entity);
 
             response = client.execute(postRequest);
-            return getRequiredData(response);
+            return getRequiredData(response, "id");
         } catch (ParserConfigurationException | InvalidRequestException | SAXException | IOException e) {
             throw new ScannerException("Error occurred while adding authentication script", e);
         }
 
     }
 
-    public String updateWebApp(String host, String updateWebAppRequestBody, String webId)
-            throws ScannerException {
+    public String updateWebApp(String host, String updateWebAppRequestBody, String webId) throws ScannerException {
         HttpPost postRequest = new HttpPost(host.concat(QualysScannerConstants.QUALYS_WEB_UPDATE_API.concat(webId)));
         postRequest.addHeader("Authorization", "Basic " + basicAuth);
         HttpClient client = HttpClientBuilder.create().build();
@@ -125,13 +125,13 @@ public class QualysApiInvoker {
         try {
             postRequest.setEntity(entity);
             response = client.execute(postRequest);
-            return getRequiredData(response);
+            return getRequiredData(response, "id");
         } catch (IOException | ParserConfigurationException | InvalidRequestException | SAXException e) {
             throw new ScannerException("Error occurred while updating web app with authentication script", e);
         }
     }
 
-    public  ScannerResponse launchScan(String host, String launchScanRequestBody)
+    public ScannerResponse launchScan(String host, String launchScanRequestBody)
             throws ScannerException, InvalidRequestException {
         HttpPost postRequest = new HttpPost(host.concat(QualysScannerConstants.QUALYS_START_SCAN_API));
         postRequest.addHeader("Authorization", "Basic " + basicAuth);
@@ -143,11 +143,10 @@ public class QualysApiInvoker {
         try {
             postRequest.setEntity(entity);
             response = client.execute(postRequest);
-            scanId = getRequiredData(response);
+            scanId = getRequiredData(response, "id");
             if (scanId != null) {
                 scannerResponse.setScanID(scanId);
                 scannerResponse.setIsSuccessful(true);
-
             }
             return scannerResponse;
         } catch (IOException | ParserConfigurationException | SAXException e) {
@@ -155,7 +154,19 @@ public class QualysApiInvoker {
         }
     }
 
-    private String getRequiredData(HttpResponse response)
+    public String retrieveStatus(String host, String scanId)
+            throws IOException, InvalidRequestException, ParserConfigurationException, SAXException {
+        HttpGet getRequest = new HttpGet(host.concat(QualysScannerConstants.QUALYS_GET_STATUS_API.concat(scanId)));
+        getRequest.addHeader("Authorization", "Basic " + basicAuth);
+        getRequest.addHeader("Accept", "application/xml");
+        HttpClient client = HttpClientBuilder.create().build();
+        String status = null;
+        HttpResponse response = client.execute(getRequest);
+        status = getRequiredData(response, "status");
+        return status;
+    }
+
+    private String getRequiredData(HttpResponse response, String tagName)
             throws InvalidRequestException, IOException, ParserConfigurationException, SAXException {
         String result;
         String requiredData = null;
@@ -178,7 +189,7 @@ public class QualysApiInvoker {
                 responseCode = err.getElementsByTagName("responseCode").item(0).getTextContent();
                 if (responseCode != null) {
                     if (responseCode.equals("SUCCESS")) {
-                        requiredData = err.getElementsByTagName("id").item(0).getTextContent();
+                        requiredData = err.getElementsByTagName(tagName).item(0).getTextContent();
                     } else if (responseCode.equals("INVALID_XML")) {
                         log.error("Invalid XML format in the XML request");
                     } else if (responseCode.equals("UNAUTHORIZED")) {

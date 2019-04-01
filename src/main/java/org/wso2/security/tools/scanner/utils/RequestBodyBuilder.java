@@ -125,8 +125,7 @@ public class RequestBodyBuilder {
 
     }
 
-    public static String updateWebAppRequestBody(String webAppName, String authId)
-            throws InvalidRequestException {
+    public static String updateWebAppRequestBody(String webAppName, String authId) throws InvalidRequestException {
         String updateWebAppRequestBody;
         try {
             DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
@@ -168,7 +167,8 @@ public class RequestBodyBuilder {
         }
     }
 
-    public static String buildLaunchScanRequestBody(QualysScannerParam qualysScannerParam, String authScriptId) throws InvalidRequestException {
+    public static String buildLaunchScanRequestBody(QualysScannerParam qualysScannerParam, String authScriptId)
+            throws InvalidRequestException {
         String launchScanRequestBody = null;
         try {
             DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
@@ -223,8 +223,7 @@ public class RequestBodyBuilder {
             profile.appendChild(profileId);
 
             Element progressiveScanning = doc.createElement("progressiveScanning");
-            progressiveScanning.appendChild(
-                    doc.createTextNode(qualysScannerParam.getIsProgressinveScanningEnabled()));
+            progressiveScanning.appendChild(doc.createTextNode(qualysScannerParam.getIsProgressinveScanningEnabled()));
             wasScan.appendChild(progressiveScanning);
 
             StringWriter stringWriter = buildSecureStringWriter(doc);
