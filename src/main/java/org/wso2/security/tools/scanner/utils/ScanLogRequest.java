@@ -25,20 +25,20 @@ package org.wso2.security.tools.scanner.utils;
  */
 public class ScanLogRequest {
 
-    private String scanId;
+    private String jobId;
 
     private String type;
 
     private String message;
 
-    public String getScanId() {
+    public String getJobId() {
 
-        return scanId;
+        return jobId;
     }
 
-    public void setScanId(String scanId) {
+    public void setJobId(String jobId) {
 
-        this.scanId = scanId;
+        this.jobId = jobId;
     }
 
     public String getType() {

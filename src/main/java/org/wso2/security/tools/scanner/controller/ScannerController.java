@@ -20,67 +20,87 @@
 
 package org.wso2.security.tools.scanner.controller;
 
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.wso2.security.tools.scanner.exception.InvalidRequestException;
-import org.wso2.security.tools.scanner.exception.ScannerException;
-import org.wso2.security.tools.scanner.service.ScannerService;
+import org.wso2.security.tools.scanner.ScannerConstants;
+import org.wso2.security.tools.scanner.utils.CallbackUtil;
+import org.wso2.security.tools.scanner.utils.ErrorMessage;
+import org.wso2.security.tools.scanner.scanner.Scanner;
 import org.wso2.security.tools.scanner.utils.ScannerRequest;
-import org.wso2.security.tools.scanner.utils.ScannerResponse;
 
 /**
  * The class {@code ScannerController} is the web controller which defines the routines for initiating
  * scanner operations.
  */
-@Controller
-@RequestMapping("scanner")
-public class ScannerController {
+@Controller @RequestMapping("scanner") public class ScannerController {
+    // This represents if a scan is started
+    private boolean hasScanStarted = false;
+    private static final Logger log = Logger.getLogger(ScannerController.class);
 
-    private final ScannerService scannerService;
+    @Autowired Scanner scanner;
 
-    @Autowired
-    public ScannerController(ScannerService scannerService) throws ScannerException {
-        this.scannerService = scannerService;
-        scannerService.init();
+    public ScannerController(Scanner scanner) {
+
+        log.info("Scanner Service is initialised in the container...");
+        scanner.init();
+
     }
 
     /**
      * Controller method to start scan.
      *
-     * @param scannerRequest Object that represent the required information for tha scanner operation
-     * @return Path to the scan report or status of the scan
-     * @throws ScannerException
+     * @param scanRequest scanRequest Object that represent the required information for tha scanner operation
+     * @return response entity
      */
-    @PostMapping("start-scan")
-    @ResponseBody
-    public ResponseEntity<ScannerResponse> startScan(@RequestBody ScannerRequest scannerRequest)
-            throws InvalidRequestException, ScannerException {
-        ScannerResponse scannerResponse;
-        scannerResponse = scannerService.startScan(scannerRequest);
+    @PostMapping("scan") @ResponseBody public ResponseEntity startScan(@RequestBody ScannerRequest scanRequest) {
 
-        return new ResponseEntity<>(scannerResponse, HttpStatus.OK);
+        ResponseEntity responseEntity;
+        if (!hasScanStarted) {
+            log.info("Start scan API is being called. ");
+            responseEntity = scanner.startScan(scanRequest);
+            if (responseEntity.getStatusCode().equals(HttpStatus.ACCEPTED)) {
+                hasScanStarted = true;
+            }
+        } else {
+            String message = "You already has initialised an scan. You can't proceed with another scan now.";
+            responseEntity = new ResponseEntity<>(new ErrorMessage(HttpStatus.BAD_REQUEST.value(), message),
+                    HttpStatus.BAD_REQUEST);
+            log.error(message);
+            CallbackUtil.persistScanLog(scanRequest.getJobId(), message, ScannerConstants.ERROR);
+        }
+        return responseEntity;
+
     }
 
     /**
      * Controller method to stop the last scan for a given application.
      *
-     * @param scannerRequest Object that represent the required information for tha scanner operation
-     * @return
+     * @param scanRequest Object that represent the required information for tha scanner operation
+     * @return response entity
      */
-    @PostMapping("cancel-scan")
-    @ResponseBody
-    public ResponseEntity<ScannerResponse> cancelScan(@RequestBody ScannerRequest scannerRequest)
-            throws ScannerException {
-        ScannerResponse scannerResponse;
-        scannerResponse = scannerService.cancelScan(scannerRequest);
+    @DeleteMapping("scan") @ResponseBody public ResponseEntity cancelScan(@RequestBody ScannerRequest scanRequest) {
 
-        return new ResponseEntity<>(scannerResponse, HttpStatus.OK);
+        ResponseEntity responseEntity;
+
+        if (!hasScanStarted) {
+            String message = "First you should have started a scan to proceed with the cancel scan operation. ";
+            responseEntity = new ResponseEntity<>(new ErrorMessage(HttpStatus.NOT_ACCEPTABLE.value(), message),
+                    HttpStatus.BAD_REQUEST);
+            log.error(message);
+            CallbackUtil.persistScanLog(scanRequest.getJobId(), message, ScannerConstants.ERROR);
+        } else {
+            log.info("Cancel scan API is being called. ");
+            responseEntity = scanner.cancelScan(scanRequest);
+        }
+        return responseEntity;
     }
 
 }

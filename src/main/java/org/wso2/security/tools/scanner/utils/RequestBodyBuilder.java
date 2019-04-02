@@ -24,13 +24,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.wso2.security.tools.scanner.QualysScannerConstants;
-import org.wso2.security.tools.scanner.config.ConfigurationReader;
 import org.wso2.security.tools.scanner.config.QualysScannerParam;
 import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.exception.ScannerException;
-import org.wso2.security.tools.scanner.scanner.QualysScanner;
-import org.wso2.security.tools.scanner.scanner.Scanner;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,7 +42,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
@@ -55,186 +50,177 @@ import javax.xml.transform.stream.StreamResult;
 import static org.wso2.security.tools.scanner.scanner.AbstractScanner.getSecuredDocumentBuilderFactory;
 
 /**
- * Qualys scanner accepts XML format request body which contains the data related for scan
+ * Qualys scanner accepts XML format request body which contains the data related for scan. This class is responsible to
+ * create XML format request body.
  */
 public class RequestBodyBuilder {
+
     private static final Log log = LogFactory.getLog(RequestBodyBuilder.class);
 
+    /**
+     * Build request body to add authentication script
+     *
+     * @param appName
+     * @param listOfAuthFiles
+     * @return
+     * @throws InvalidRequestException
+     */
     public static String buildAddAuthScriptRequestBody(String appName, List<String> listOfAuthFiles)
-            throws InvalidRequestException {
+            throws ParserConfigurationException, IOException, TransformerException {
 
         String addAuthRecordRequestBody = null;
+        DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
+        DocumentBuilder builder = dbf.newDocumentBuilder();
+        Document doc = builder.newDocument();
 
-        try {
-            DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
-            DocumentBuilder builder = dbf.newDocumentBuilder();
-            Document doc = builder.newDocument();
+        Element root = doc.createElement("ServiceRequest");
+        doc.appendChild(root);
 
-            Element root = doc.createElement("ServiceRequest");
-            doc.appendChild(root);
+        Element data = doc.createElement("data");
+        root.appendChild(data);
 
-            Element data = doc.createElement("data");
-            root.appendChild(data);
+        Element webAppAuthRecord = doc.createElement("WebAppAuthRecord");
+        data.appendChild(webAppAuthRecord);
 
-            Element webAppAuthRecord = doc.createElement("WebAppAuthRecord");
-            data.appendChild(webAppAuthRecord);
-
-            File tempFile = new File(listOfAuthFiles.get(0));
-            if (tempFile.exists()) {
-                Element name = doc.createElement("name");
-                name.appendChild(doc.createTextNode("Selenium Script for " + appName + " : " + getDate()));
-                webAppAuthRecord.appendChild(name);
-            } else {
-                log.warn("Authentication script is not exist in " + tempFile.getAbsolutePath());
-            }
-
-            Element formRecord = doc.createElement("formRecord");
-            webAppAuthRecord.appendChild(formRecord);
-
-            Element type = doc.createElement("type");
-            type.appendChild(doc.createTextNode("SELENIUM"));
-            formRecord.appendChild(type);
-
-            Element seleniumScript = doc.createElement("seleniumScript");
-            formRecord.appendChild(seleniumScript);
-
-            Element seleniumScriptName = doc.createElement("name");
-            seleniumScriptName.appendChild(doc.createTextNode("SELENIUM"));
-            seleniumScript.appendChild(seleniumScriptName);
-
-            Element scriptData = doc.createElement("data");
-            scriptData.appendChild(doc.createTextNode(getContentFromFile(tempFile.getAbsolutePath())));
-            seleniumScript.appendChild(scriptData);
-
-            Element regex = doc.createElement("regex");
-            regex.appendChild(doc.createTextNode("selenium"));
-            seleniumScript.appendChild(regex);
-
-            StringWriter stringWriter = buildSecureStringWriter(doc);
-            addAuthRecordRequestBody = stringWriter.getBuffer().toString();
-
-            return addAuthRecordRequestBody;
-
-        } catch (ParserConfigurationException e) {
-            throw new InvalidRequestException("Error while parsing the XML request!", e);
-        } catch (IOException e) {
-            throw new InvalidRequestException("Error while reading selenium script!", e);
-        } catch (TransformerException e) {
-            throw new InvalidRequestException("Error while creating XML format request!", e);
+        File tempFile = new File(listOfAuthFiles.get(0));
+        if (tempFile.exists()) {
+            Element name = doc.createElement("name");
+            name.appendChild(doc.createTextNode("Selenium Script for " + appName + " : " + getDate()));
+            webAppAuthRecord.appendChild(name);
+        } else {
+            log.warn("Authentication script is not exist in " + tempFile.getAbsolutePath());
         }
+
+        Element formRecord = doc.createElement("formRecord");
+        webAppAuthRecord.appendChild(formRecord);
+
+        Element type = doc.createElement("type");
+        type.appendChild(doc.createTextNode("SELENIUM"));
+        formRecord.appendChild(type);
+
+        Element seleniumScript = doc.createElement("seleniumScript");
+        formRecord.appendChild(seleniumScript);
+
+        Element seleniumScriptName = doc.createElement("name");
+        seleniumScriptName.appendChild(doc.createTextNode("SELENIUM"));
+        seleniumScript.appendChild(seleniumScriptName);
+
+        Element scriptData = doc.createElement("data");
+        scriptData.appendChild(doc.createTextNode(getContentFromFile(tempFile.getAbsolutePath())));
+        seleniumScript.appendChild(scriptData);
+
+        Element regex = doc.createElement("regex");
+        regex.appendChild(doc.createTextNode("selenium"));
+        seleniumScript.appendChild(regex);
+
+        StringWriter stringWriter = buildSecureStringWriter(doc);
+        addAuthRecordRequestBody = stringWriter.getBuffer().toString();
+
+        return addAuthRecordRequestBody;
 
     }
 
-    public static String updateWebAppRequestBody(String webAppName, String authId) throws InvalidRequestException {
+    public static String updateWebAppRequestBody(String webAppName, String authId)
+            throws ParserConfigurationException, TransformerException {
         String updateWebAppRequestBody;
-        try {
-            DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
-            DocumentBuilder builder = dbf.newDocumentBuilder();
-            Document doc = builder.newDocument();
-            Element root = doc.createElement("ServiceRequest");
-            doc.appendChild(root);
+        DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
+        DocumentBuilder builder = dbf.newDocumentBuilder();
+        Document doc = builder.newDocument();
+        Element root = doc.createElement("ServiceRequest");
+        doc.appendChild(root);
 
-            Element data = doc.createElement("data");
-            root.appendChild(data);
+        Element data = doc.createElement("data");
+        root.appendChild(data);
 
-            Element webApp = doc.createElement("WebApp");
-            data.appendChild(webApp);
+        Element webApp = doc.createElement("WebApp");
+        data.appendChild(webApp);
 
-            Element name = doc.createElement("name");
-            name.appendChild(doc.createTextNode(webAppName));
-            webApp.appendChild(name);
+        Element name = doc.createElement("name");
+        name.appendChild(doc.createTextNode(webAppName));
+        webApp.appendChild(name);
 
-            Element authRecords = doc.createElement("authRecords");
-            webApp.appendChild(authRecords);
+        Element authRecords = doc.createElement("authRecords");
+        webApp.appendChild(authRecords);
 
-            Element add = doc.createElement("add");
-            authRecords.appendChild(add);
+        Element add = doc.createElement("add");
+        authRecords.appendChild(add);
 
-            Element webAppAuthRecord = doc.createElement("WebAppAuthRecord");
-            add.appendChild(webAppAuthRecord);
+        Element webAppAuthRecord = doc.createElement("WebAppAuthRecord");
+        add.appendChild(webAppAuthRecord);
 
-            Element id = doc.createElement("id");
-            id.appendChild(doc.createTextNode(authId));
-            webAppAuthRecord.appendChild(id);
+        Element id = doc.createElement("id");
+        id.appendChild(doc.createTextNode(authId));
+        webAppAuthRecord.appendChild(id);
 
-            StringWriter stringWriter = buildSecureStringWriter(doc);
-            updateWebAppRequestBody = stringWriter.getBuffer().toString();
+        StringWriter stringWriter = buildSecureStringWriter(doc);
+        updateWebAppRequestBody = stringWriter.getBuffer().toString();
 
-            return updateWebAppRequestBody;
+        return updateWebAppRequestBody;
 
-        } catch (ParserConfigurationException | TransformerException e) {
-            throw new InvalidRequestException("Error while parsing the XML request!", e);
-        }
     }
 
     public static String buildLaunchScanRequestBody(QualysScannerParam qualysScannerParam, String authScriptId)
-            throws InvalidRequestException {
+            throws ParserConfigurationException, TransformerException {
         String launchScanRequestBody = null;
-        try {
-            DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
-            DocumentBuilder builder = dbf.newDocumentBuilder();
-            Document doc = builder.newDocument();
-            Element root = doc.createElement("ServiceRequest");
-            doc.appendChild(root);
+        DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
+        DocumentBuilder builder = dbf.newDocumentBuilder();
+        Document doc = builder.newDocument();
+        Element root = doc.createElement("ServiceRequest");
+        doc.appendChild(root);
 
-            Element data = doc.createElement("data");
-            root.appendChild(data);
+        Element data = doc.createElement("data");
+        root.appendChild(data);
 
-            Element wasScan = doc.createElement("WasScan");
-            data.appendChild(wasScan);
+        Element wasScan = doc.createElement("WasScan");
+        data.appendChild(wasScan);
 
-            Element name = doc.createElement("name");
-            name.appendChild(doc.createTextNode(qualysScannerParam.getScanName()));
-            wasScan.appendChild(name);
+        Element name = doc.createElement("name");
+        name.appendChild(doc.createTextNode(qualysScannerParam.getScanName()));
+        wasScan.appendChild(name);
 
-            Element type = doc.createElement("type");
-            type.appendChild(doc.createTextNode(qualysScannerParam.getType()));
-            wasScan.appendChild(type);
+        Element type = doc.createElement("type");
+        type.appendChild(doc.createTextNode(qualysScannerParam.getType()));
+        wasScan.appendChild(type);
 
-            Element target = doc.createElement("target");
-            wasScan.appendChild(target);
+        Element target = doc.createElement("target");
+        wasScan.appendChild(target);
 
-            Element webApp = doc.createElement("webApp");
-            target.appendChild(webApp);
+        Element webApp = doc.createElement("webApp");
+        target.appendChild(webApp);
 
-            Element webAppId = doc.createElement("id");
-            webAppId.appendChild(doc.createTextNode(qualysScannerParam.getWebAppId().toString()));
-            webApp.appendChild(webAppId);
+        Element webAppId = doc.createElement("id");
+        webAppId.appendChild(doc.createTextNode(qualysScannerParam.getWebAppId().toString()));
+        webApp.appendChild(webAppId);
 
-            Element webAppAuthRecord = doc.createElement("webAppAuthRecord");
-            target.appendChild(webAppAuthRecord);
+        Element webAppAuthRecord = doc.createElement("webAppAuthRecord");
+        target.appendChild(webAppAuthRecord);
 
-            Element webAppAuthRecordId = doc.createElement("id");
-            webAppAuthRecordId.appendChild(doc.createTextNode(authScriptId));
-            webAppAuthRecord.appendChild(webAppAuthRecordId);
+        Element webAppAuthRecordId = doc.createElement("id");
+        webAppAuthRecordId.appendChild(doc.createTextNode(authScriptId));
+        webAppAuthRecord.appendChild(webAppAuthRecordId);
 
-            Element scannerAppliance = doc.createElement("scannerAppliance");
-            target.appendChild(scannerAppliance);
+        Element scannerAppliance = doc.createElement("scannerAppliance");
+        target.appendChild(scannerAppliance);
 
-            Element scannerApplianceType = doc.createElement("type");
-            scannerApplianceType.appendChild(doc.createTextNode(qualysScannerParam.getScannerApplianceType()));
-            scannerAppliance.appendChild(scannerApplianceType);
+        Element scannerApplianceType = doc.createElement("type");
+        scannerApplianceType.appendChild(doc.createTextNode(qualysScannerParam.getScannerApplianceType()));
+        scannerAppliance.appendChild(scannerApplianceType);
 
-            Element profile = doc.createElement("profile");
-            wasScan.appendChild(profile);
+        Element profile = doc.createElement("profile");
+        wasScan.appendChild(profile);
 
-            Element profileId = doc.createElement("id");
-            profileId.appendChild(doc.createTextNode(qualysScannerParam.getProfileId().toString()));
-            profile.appendChild(profileId);
+        Element profileId = doc.createElement("id");
+        profileId.appendChild(doc.createTextNode(qualysScannerParam.getProfileId().toString()));
+        profile.appendChild(profileId);
 
-            Element progressiveScanning = doc.createElement("progressiveScanning");
-            progressiveScanning.appendChild(doc.createTextNode(qualysScannerParam.getIsProgressinveScanningEnabled()));
-            wasScan.appendChild(progressiveScanning);
+        Element progressiveScanning = doc.createElement("progressiveScanning");
+        progressiveScanning.appendChild(doc.createTextNode(qualysScannerParam.getProgressiveScanning()));
+        wasScan.appendChild(progressiveScanning);
 
-            StringWriter stringWriter = buildSecureStringWriter(doc);
-            launchScanRequestBody = stringWriter.getBuffer().toString();
+        StringWriter stringWriter = buildSecureStringWriter(doc);
+        launchScanRequestBody = stringWriter.getBuffer().toString();
 
-            return launchScanRequestBody;
-        } catch (ParserConfigurationException e) {
-            throw new InvalidRequestException("Error while parsing the XML request!", e);
-        } catch (TransformerException e) {
-            throw new InvalidRequestException("Error while creating XML format request!", e);
-        }
+        return launchScanRequestBody;
 
     }
 

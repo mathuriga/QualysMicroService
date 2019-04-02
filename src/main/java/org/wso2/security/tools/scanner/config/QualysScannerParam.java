@@ -15,7 +15,6 @@
  *  KIND, either express or implied.  See the License for the
  *  specific language governing permissions and limitations
  *  under the License.
- * /
  */
 
 package org.wso2.security.tools.scanner.config;
@@ -31,33 +30,23 @@ public class QualysScannerParam {
     // Qualys Scan Name (Mandatory)
     private String scanName;
 
-    public String getWebAppName() {
-        return webAppName;
-    }
-
-    public void setWebAppName(String webAppName) {
-        this.webAppName = webAppName;
-    }
-
+    // Qualys Web Application Name (Mandatory which is retrieved from request)
     private String webAppName;
 
     // Qualys Web Application Id (Mandatory)
-    private Integer webAppId;
+    private String webAppId;
 
     // Qualys Scan Type (Mandatory)
     private String type;
 
-    // Scanner Appliance Type;
+    // Scanner Appliance Type
     private String scannerApplianceType;
 
-    //webAppAuthRecord.isDefault (boolean): Set to true to use the default web application's (Optional))
-    private Boolean isWebAuthRecordDefault;
-
     //Scan profile Id (Mandatory)
-    private Integer profileId;
+    private String profileId;
 
     //ProgressiveScan (Optional)
-    private String isProgressinveScanningEnabled;
+    private String progressiveScanning;
 
     //Email to send notification regarding the Qualys Scan
     private String email;
@@ -76,11 +65,11 @@ public class QualysScannerParam {
         this.scanName = scanName;
     }
 
-    public Integer getWebAppId() {
+    public String getWebAppId() {
         return webAppId;
     }
 
-    public void setWebAppId(Integer webAppId) {
+    public void setWebAppId(String webAppId) {
         this.webAppId = webAppId;
     }
 
@@ -100,14 +89,6 @@ public class QualysScannerParam {
         this.scannerApplianceType = scannerApplianceType;
     }
 
-    public Boolean getWebAuthRecordDefault() {
-        return isWebAuthRecordDefault;
-    }
-
-    public void setWebAuthRecordDefault(Boolean webAuthRecordDefault) {
-        isWebAuthRecordDefault = webAuthRecordDefault;
-    }
-
     public List<String> getListOfAuthenticationScripts() {
         return listOfAuthenticationScripts;
     }
@@ -124,20 +105,20 @@ public class QualysScannerParam {
         this.listOfCrawlingScripts = listOfCrawlingScripts;
     }
 
-    public Integer getProfileId() {
+    public String getProfileId() {
         return profileId;
     }
 
-    public void setProfileId(Integer profileId) {
+    public void setProfileId(String profileId) {
         this.profileId = profileId;
     }
 
-    public String getIsProgressinveScanningEnabled() {
-        return isProgressinveScanningEnabled;
+    public String getProgressiveScanning() {
+        return progressiveScanning;
     }
 
-    public void setIsProgressinveScanningEnabled(String isProgressinveScanningEnabled) {
-        this.isProgressinveScanningEnabled = isProgressinveScanningEnabled;
+    public void setProgressiveScanning(String progressiveScanning) {
+        this.progressiveScanning = progressiveScanning;
     }
 
     public String getEmail() {
@@ -146,6 +127,14 @@ public class QualysScannerParam {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getWebAppName() {
+        return webAppName;
+    }
+
+    public void setWebAppName(String webAppName) {
+        this.webAppName = webAppName;
     }
 
 }

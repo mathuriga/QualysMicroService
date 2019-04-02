@@ -22,8 +22,11 @@ package org.wso2.security.tools.scanner.handler;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.security.tools.scanner.ScannerConstants;
 import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.scanner.QualysScanner;
+import org.wso2.security.tools.scanner.utils.CallbackUtil;
+import org.wso2.security.tools.scanner.utils.ScanStatus;
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
@@ -34,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.xml.parsers.ParserConfigurationException;
 
 /**
- * TODO : Class level comment
+ * Responsible to check the scan status.
  */
 public class StatusChecker {
     private static final Log log = LogFactory.getLog(StatusChecker.class);
@@ -43,9 +46,9 @@ public class StatusChecker {
     private final long initialDelay;
     private final long delayBetweenRuns;
     private static AtomicReference<String> currentStatus = new AtomicReference<>();
-    private static QualysApiInvoker qualysApiInvoker;
-    private static String qualysScanId;
-    private static String jobId;
+    private QualysApiInvoker qualysApiInvoker;
+    private String qualysScanId;
+    private String jobId;
 
     public StatusChecker(QualysApiInvoker qualysApiInvoker, String qualysScanId, String jobId, long initialDelay,
             long delayBetweenRuns) {
@@ -55,8 +58,7 @@ public class StatusChecker {
         this.initialDelay = initialDelay;
         this.delayBetweenRuns = delayBetweenRuns;
         this.scheduler = Executors.newScheduledThreadPool(NUM_THREADS);
-        String init = "INITIATED";
-        currentStatus.set(init);
+        currentStatus.set("INITIATED");
     }
 
     public void activateStatusChecker() {
@@ -78,32 +80,32 @@ public class StatusChecker {
                 currentStatus.set(status);
                 switch (currentStatus.get()) {
                 case "SUBMITTED":
-                    log.info("SCAN IS SUBMITTED");
+                    CallbackUtil.updateScanStatus(jobId, ScanStatus.SUBMITTED, null, qualysScanId);
                     break;
                 case "RUNNING":
-                    log.info("SCAN IS RUNNING");
+                    CallbackUtil.updateScanStatus(jobId, ScanStatus.RUNNING, null, qualysScanId);
                     break;
                 case "FINISHED":
-                    log.info("SCAN IS FINISHED");
+                    CallbackUtil.updateScanStatus(jobId, ScanStatus.COMPLETED, null, qualysScanId);
+                    CallbackUtil.persistScanLog(jobId, "SCAN IS COMPLETED", ScannerConstants.INFO);
                     scheduler.shutdown();
                     break;
                 case "ERROR":
-                    log.info("ERROR");
+                    CallbackUtil.updateScanStatus(jobId, ScanStatus.ERROR, null, qualysScanId);
+                    CallbackUtil.persistScanLog(jobId, "SCAN FAILED", ScannerConstants.ERROR);
                     scheduler.shutdown();
                     break;
                 case "CANCELED":
-                    log.info("ERROR");
+                    log.info("SCAN IS FINISHED");
+                    CallbackUtil.updateScanStatus(jobId, ScanStatus.CANCELED, null, qualysScanId);
+                    CallbackUtil.persistScanLog(jobId, "SCAN IS CANCELLED", ScannerConstants.INFO);
                     scheduler.shutdown();
                     break;
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (InvalidRequestException e) {
-                e.printStackTrace();
-            } catch (ParserConfigurationException e) {
-                e.printStackTrace();
-            } catch (SAXException e) {
-                e.printStackTrace();
+            } catch (IOException | InvalidRequestException | ParserConfigurationException | SAXException e) {
+                CallbackUtil.updateScanStatus(jobId, ScanStatus.ERROR, null, qualysScanId);
+                CallbackUtil.persistScanLog(jobId, "Could not retrieve the status", ScannerConstants.ERROR);
+                scheduler.shutdown();
             }
         }
     }

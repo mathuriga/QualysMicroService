@@ -28,7 +28,7 @@ import java.util.Map;
  */
 public class ScannerRequest {
     private String appId;
-    private String scanId;
+    private String jobId;
     private String productName;
     Map<String, List<String>> fileMap;
     Map<String, List<String>> parameterMap;
@@ -49,12 +49,12 @@ public class ScannerRequest {
         this.parameterMap = parameterMap;
     }
 
-    public String getScanId() {
-        return scanId;
+    public String getJobId() {
+        return jobId;
     }
 
-    public void setScanId(String scanId) {
-        this.scanId = scanId;
+    public void setJobId(String jobId) {
+        this.jobId = jobId;
     }
 
     public String getProductName() {

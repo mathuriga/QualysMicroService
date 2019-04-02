@@ -31,9 +31,10 @@ public final class ScannerConstants {
     public static final String ZIP_FILE_EXTENSION = ".zip";
     public static final String POM_FILE = "pom.xml";
     public static final String PDF_FILE_EXTENSION = ".pdf";
-    public static final String CALLBACK_RETRY_INTERVAL_MINS = "callback_retry_interval_mins";
+    public static final String CALLBACK_RETRY_INTERVAL_SECONDS = "callback_retry_interval_mins";
     public static final String CONFIGURTION_FILE_NAME = "scanner-config.yaml";
     public static final String RESOURCE_FILE_PATH = "src/main/resources";
+    public static final String CALLBACK_RETRY_INCREASE_SECONDS="callback_retry_increase_seconds";
 
     // ftp configuration
     public static final String FTP_USERNAME = "ftp_username";

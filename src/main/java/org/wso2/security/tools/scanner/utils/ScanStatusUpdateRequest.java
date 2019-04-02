@@ -25,7 +25,7 @@ package org.wso2.security.tools.scanner.utils;
  */
 public class ScanStatusUpdateRequest {
 
-    private String scanId;
+    private String jobId;
 
     private String scanStatus;
 
@@ -43,14 +43,14 @@ public class ScanStatusUpdateRequest {
         this.scanReportPath = scanReportPath;
     }
 
-    public String getScanId() {
+    public String getJobId() {
 
-        return scanId;
+        return jobId;
     }
 
-    public void setScanId(String scanId) {
+    public void setJobId(String jobId) {
 
-        this.scanId = scanId;
+        this.jobId = jobId;
     }
 
     public String getScanStatus() {

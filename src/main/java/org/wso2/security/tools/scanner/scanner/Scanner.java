@@ -20,13 +20,8 @@
 
 package org.wso2.security.tools.scanner.scanner;
 
-import org.wso2.security.tools.scanner.exception.InvalidRequestException;
-import org.wso2.security.tools.scanner.exception.ScannerException;
+import org.springframework.http.ResponseEntity;
 import org.wso2.security.tools.scanner.utils.ScannerRequest;
-import org.wso2.security.tools.scanner.utils.ScannerResponse;
-
-import java.io.FileNotFoundException;
-import java.io.UnsupportedEncodingException;
 
 /**
  * Interface for the scanner.
@@ -35,18 +30,15 @@ public interface Scanner {
 
     /**
      * Initialise the Scanner.
-     *
-     * @throws ScannerException
      */
-    void init() throws ScannerException, FileNotFoundException, UnsupportedEncodingException;
+    void init();
 
     /**
      * Run scan.
      *
      * @param scannerRequest Object that represent the required information for tha scanner operation
-     * @throws ScannerException
      */
-    ScannerResponse startScan(ScannerRequest scannerRequest) throws InvalidRequestException, ScannerException;
+    ResponseEntity startScan(ScannerRequest scannerRequest);
 
     /**
      * Controller method to stop the last scan for a given application.
@@ -54,6 +46,6 @@ public interface Scanner {
      * @param scannerRequest Object that represent the required information for tha scanner operation
      * @return whether delete scan operation success
      */
-    ScannerResponse cancelScan(ScannerRequest scannerRequest) throws ScannerException;
+    ResponseEntity cancelScan(ScannerRequest scannerRequest);
 
 }

@@ -21,28 +21,29 @@
 package org.wso2.security.tools.scanner;
 
 /**
- * TODO : Class level comment
+ * Constants related to Qualys Scanner
  */
 public class QualysScannerConstants {
 
+    //Constants related to Qualys credentials
     public static final String USERNAME = "username";
     public static final String PASSWORD = "password";
     public static final String HOST = "host";
 
-    //Qualys API URLs
+    //Qualys API Endpoint
     public static final String QUALYS_START_SCAN_API = "/qps/rest/3.0/launch/was/wasscan";
-    public static final String QUALYS_CANCEL_SCAN_API = "/qps/rest/3.0/cancel/was/wasscan/";
+    //    public static final String QUALYS_CANCEL_SCAN_API = "/qps/rest/3.0/cancel/was/wasscan/";
     public static final String QUALYS_GET_STATUS_API = "/qps/rest/3.0/status/was/wasscan/";
-    public static final String QUALYS_GET_REPORT_API = "/qps/rest/3.0/download/was/report/";
+    //    public static final String QUALYS_GET_REPORT_API = "/qps/rest/3.0/download/was/report/";
     public static final String QUALYS_GET_APPLICATION_API = "/qps/rest/3.0/search/was/webapp/";
     public static final String QUALYS_GET_AUTHENTICATION_SCRIPT_API = "/qps/rest/3.0/search/was/webappauthrecord/";
     public static final String QUALYS_GET_OPTIONAL_PROFILE_API = "/qps/rest/3.0/search/was/optionprofile/";
-    public static final String QUALYS_ADD_AUTH_SCRIPT_API="/qps/rest/3.0/create/was/webappauthrecord";
-    public static final String QUALYS_WEB_UPDATE_API="/qps/rest/3.0/update/was/webapp/";
-    //File paths
+    public static final String QUALYS_ADD_AUTH_SCRIPT_API = "/qps/rest/3.0/create/was/webappauthrecord";
+    public static final String QUALYS_WEB_UPDATE_API = "/qps/rest/3.0/update/was/webapp/";
+
+    //Paths of the required files which are generated at Qualys Scanner initializing time
     public static final String QUALYS_WEB_APPLICATION_LIST_FILE_PATH = ScannerConstants.RESOURCE_FILE_PATH
             .concat("/qualysWebApplications.xml");
-    //File paths
     public static final String QUALYS_AUTHENTICATION_LIST_FILE_PATH = ScannerConstants.RESOURCE_FILE_PATH
             .concat("/qualysAuthenticationScripts.xml");
     public static final String QUALYS_OPTIONAL_PROFILE_LIST_FILE_PATH = ScannerConstants.RESOURCE_FILE_PATH
@@ -51,7 +52,9 @@ public class QualysScannerConstants {
     //            .concat("/qualysCrawlingScripts.xml");
 
     public static final String QUALYS_SCAN_NAME_PREFIX = "New Discovery scan launch from API : ";
-    public static final long QUALYS_SCANNER_CHECK_TIME = 15;
+    public static final long DELAY_BETWEEN_STATUS_CHECK_TASK = 15;
+
+    //Qualys Tag Names
     public static final String QUALYS_WEBAPP_TAG_NAME = "WebApp";
     public static final String QUALYS_OPTIONAL_PROFILE_TAG_NAME = "OptionProfile";
     public static final String NAME_KEYWORD = "name";
