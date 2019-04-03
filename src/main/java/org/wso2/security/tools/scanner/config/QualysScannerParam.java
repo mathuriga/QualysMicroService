@@ -25,6 +25,7 @@ import java.util.List;
 /**
  * This class represents the parameters related to Qualys Scanner.
  */
+// TODO: 4/3/19 scannercontext 
 public class QualysScannerParam {
 
     // Qualys Scan Name (Mandatory)

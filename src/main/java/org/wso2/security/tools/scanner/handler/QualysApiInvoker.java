@@ -54,8 +54,10 @@ public class QualysApiInvoker {
         String result;
         File tempFile = new File(filePath);
         boolean exists = tempFile.exists();
+        // TODO: 4/3/19 trywith resource 
         try {
             if (!exists) {
+                // TODO: 4/3/19 common
                 HttpPost postRequest = new HttpPost(endPoint);
                 postRequest.addHeader("Authorization", "Basic " + basicAuth);
                 postRequest.addHeader("Accept", "application/xml");
@@ -186,12 +188,13 @@ public class QualysApiInvoker {
      * @throws ParserConfigurationException Occurred while retrieving the web id.
      * @throws SAXException                 Occurred while retrieving the web id.
      */
+    // TODO: 4/3/19 rename to getTagValue and use xpath
     private String getRequiredData(HttpResponse response, String tagName)
             throws InvalidRequestException, IOException, ParserConfigurationException, SAXException {
         String result;
         String requiredData = null;
         String responseCode;
-
+        // TODO: 4/3/19 trywithresource
         if (response.getStatusLine().getStatusCode() == 200) {
             BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent(), "UTF-8"));
             StringBuilder res = new StringBuilder();
@@ -202,6 +205,7 @@ public class QualysApiInvoker {
                     .parse(new InputSource(new StringReader(res.toString())));
             NodeList errNodes = doc.getElementsByTagName("ServiceResponse");
             if (errNodes.getLength() > 0) {
+                // TODO: 4/3/19 rename err
                 Element err = (Element) errNodes.item(0);
                 responseCode = err.getElementsByTagName("responseCode").item(0).getTextContent();
                 if (responseCode != null) {
@@ -211,6 +215,7 @@ public class QualysApiInvoker {
                 }
             }
         } else if (response.getStatusLine().getStatusCode() == 400) {
+            // TODO: 4/3/19 only throw
             log.error("Given parameters are not valid.");
             throw new InvalidRequestException("Given parameters are not valid.");
         }

@@ -84,6 +84,7 @@ public class StatusChecker {
                 status = qualysApiInvoker.retrieveStatus(QualysScanner.host, qualysScanId);
                 currentStatus.set(status);
                 switch (currentStatus.get()) {
+                // TODO: 4/3/19 use enums for each status 
                 case "SUBMITTED":
                     CallbackUtil.updateScanStatus(jobId, ScanStatus.SUBMITTED, null, qualysScanId);
                     break;

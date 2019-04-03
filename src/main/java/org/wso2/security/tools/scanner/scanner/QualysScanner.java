@@ -62,6 +62,7 @@ import javax.xml.parsers.ParserConfigurationException;
  * This class is responsible to initiate the generic use cases of Qualys scanner
  */
 @Component("QualysScanner") public class QualysScanner extends AbstractScanner {
+
     private final Log log = LogFactory.getLog(QualysScanner.class);
     public static String host;
     private QualysScannerParam qualysScannerParam;
@@ -74,6 +75,7 @@ import javax.xml.parsers.ParserConfigurationException;
             QualysApiInvoker qualysApiInvoker = new QualysApiInvoker();
             qualysApiInvoker.setBasicAuth(setCredentials());
             this.qualysScanHandler = new QualysScanHandler(qualysApiInvoker);
+            // TODO: 4/3/19 remove this 
             qualysScanHandler.initiateQualysScanner(host);
         } catch (ScannerException e) {
             log.error("Failed to initiate Qualys Scanner. ", e);
@@ -149,6 +151,7 @@ import javax.xml.parsers.ParserConfigurationException;
      * @throws InvalidRequestException Invalid request error
      */
     private Boolean setQualysScannerParam(ScannerRequest scannerRequest) throws InvalidRequestException {
+        // TODO: 4/3/19 validate every params 
         Map<String, List<String>> fileMap = scannerRequest.getFileMap();
         Map<String, List<String>> parameterMap = scannerRequest.getParameterMap();
         this.qualysScannerParam = new QualysScannerParam();
@@ -230,15 +233,17 @@ import javax.xml.parsers.ParserConfigurationException;
      */
     private String setCredentials() throws ScannerException {
         String basicAuth;
+        // TODO: 4/3/19 change it to char 
         String qualysUsername = ConfigurationReader.getConfigProperty(QualysScannerConstants.USERNAME);
         String qualysPassword = ConfigurationReader.getConfigProperty(QualysScannerConstants.PASSWORD);
+        // TODO: 4/3/19 rename
         String userPassword = qualysUsername + ":" + qualysPassword;
         try {
             basicAuth = new String(new Base64().encode(userPassword.getBytes()), "UTF-8");
-            return basicAuth;
         } catch (UnsupportedEncodingException e) {
             throw new ScannerException("Qualys credentials could not be encoded\"", e);
         }
+        return basicAuth;
     }
 
     /**
