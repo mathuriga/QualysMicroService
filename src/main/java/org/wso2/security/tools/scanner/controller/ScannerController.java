@@ -31,10 +31,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.wso2.security.tools.scanner.ScannerConstants;
+import org.wso2.security.tools.scanner.config.ConfigurationReader;
 import org.wso2.security.tools.scanner.utils.CallbackUtil;
 import org.wso2.security.tools.scanner.utils.ErrorMessage;
 import org.wso2.security.tools.scanner.scanner.Scanner;
 import org.wso2.security.tools.scanner.utils.ScannerRequest;
+
+import java.io.FileNotFoundException;
 
 /**
  * The class {@code ScannerController} is the web controller which defines the routines for initiating
@@ -48,7 +51,6 @@ import org.wso2.security.tools.scanner.utils.ScannerRequest;
     @Autowired Scanner scanner;
 
     public ScannerController(Scanner scanner) {
-
         log.info("Scanner Service is initialised in the container...");
         scanner.init();
 

@@ -51,7 +51,6 @@ public class QualysApiInvoker {
      * @throws ScannerException the error occurred while generating the file.
      */
     public void generatePrerequisiteFile(String endPoint, String filePath) throws ScannerException {
-
         String result;
         File tempFile = new File(filePath);
         boolean exists = tempFile.exists();
@@ -69,7 +68,6 @@ public class QualysApiInvoker {
                     while ((result = br.readLine()) != null) {
                         res.append(result);
                     }
-
                     BufferedWriter bwr = new BufferedWriter(new FileWriter(new File(filePath)));
                     bwr.write(res.toString());
                     bwr.flush();
@@ -84,7 +82,6 @@ public class QualysApiInvoker {
         } catch (IOException e) {
             throw new ScannerException("Error occurred while retrieving the list of Web APP, Profile list", e);
         }
-
     }
 
     /**
@@ -100,7 +97,6 @@ public class QualysApiInvoker {
      */
     public String addAuthenticationScript(String host, String authScriptRequestBody)
             throws InvalidRequestException, IOException, ParserConfigurationException, SAXException {
-
         HttpPost postRequest = new HttpPost(host.concat(QualysScannerConstants.QUALYS_ADD_AUTH_SCRIPT_API));
         postRequest.addHeader("Authorization", "Basic " + basicAuth);
         HttpClient client = HttpClientBuilder.create().build();
@@ -109,7 +105,6 @@ public class QualysApiInvoker {
         postRequest.setEntity(entity);
         response = client.execute(postRequest);
         return getRequiredData(response, "id");
-
     }
 
     /**
@@ -134,7 +129,6 @@ public class QualysApiInvoker {
         postRequest.setEntity(entity);
         response = client.execute(postRequest);
         return getRequiredData(response, "id");
-
     }
 
     /**
@@ -194,7 +188,6 @@ public class QualysApiInvoker {
      */
     private String getRequiredData(HttpResponse response, String tagName)
             throws InvalidRequestException, IOException, ParserConfigurationException, SAXException {
-
         String result;
         String requiredData = null;
         String responseCode;
@@ -222,7 +215,5 @@ public class QualysApiInvoker {
             throw new InvalidRequestException("Given parameters are not valid.");
         }
         return requiredData;
-
     }
-
 }

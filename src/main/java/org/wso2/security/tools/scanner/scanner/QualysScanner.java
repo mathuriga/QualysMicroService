@@ -47,6 +47,7 @@ import org.wso2.security.tools.scanner.utils.ScannerRequest;
 import org.xml.sax.SAXException;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
@@ -67,34 +68,43 @@ import javax.xml.parsers.ParserConfigurationException;
     private QualysScanHandler qualysScanHandler;
 
     @Override public void init() {
-        host = ConfigurationReader.getConfigProperty(QualysScannerConstants.HOST);
-        QualysApiInvoker qualysApiInvoker = new QualysApiInvoker();
         try {
+            ConfigurationReader.loadConfiguration();
+            host = ConfigurationReader.getConfigProperty(QualysScannerConstants.HOST);
+            QualysApiInvoker qualysApiInvoker = new QualysApiInvoker();
             qualysApiInvoker.setBasicAuth(setCredentials());
             this.qualysScanHandler = new QualysScanHandler(qualysApiInvoker);
             qualysScanHandler.initiateQualysScanner(host);
         } catch (ScannerException e) {
             log.error("Failed to initiate Qualys Scanner. ", e);
+        } catch (FileNotFoundException e) {
+            log.error("Failed to initiate Qualys Scanner.Configuration file is not provided", e);
         }
     }
 
     @Override public ResponseEntity startScan(ScannerRequest scannerRequest) {
-
         ResponseEntity responseEntity = null;
         String authScriptId;
         String scannerScanId;
         if (!StringUtils.isEmpty(scannerRequest.getProductName())) {
             if (scannerRequest.getFileMap().get("authenticationScripts").size() != 0) {
                 try {
-                    setQualysScannerParam(scannerRequest);
+                    if (!setQualysScannerParam(scannerRequest)) {
+                        String message = "Error occurred while submitting the start scan request since "
+                                + "given application is not available : " + scannerRequest.getProductName();
+                        responseEntity = new ResponseEntity<>(new ErrorMessage(HttpStatus.BAD_REQUEST.value(), message),
+                                HttpStatus.BAD_REQUEST);
+                        return responseEntity;
+                    }
                     authScriptId = qualysScanHandler.prepareScan(scannerRequest.getJobId(), qualysScannerParam, host);
                     scannerScanId = qualysScanHandler.launchScan(qualysScannerParam, authScriptId, host);
                     if (scannerScanId != null) {
                         String message = "Qualys Scan for " + qualysScannerParam.getWebAppName()
                                 + " has successfully submitted : " + scannerScanId;
-                        CallbackUtil
-                                .updateScanStatus(scannerRequest.getJobId(), ScanStatus.SUBMITTED, null, scannerScanId);
-                        CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.INFO);
+                        //                        CallbackUtil
+                        //                                .updateScanStatus(scannerRequest.getJobId(), ScanStatus.SUBMITTED, null, scannerScanId);
+                        //                        CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.INFO);
+                        log.error(message);
                         responseEntity = new ResponseEntity<>(HttpStatus.ACCEPTED);
                         StatusChecker statusChecker = new StatusChecker(qualysScanHandler.getQualysApiInvoker(),
                                 scannerScanId, scannerRequest.getJobId(), 1, 1);
@@ -110,8 +120,9 @@ import javax.xml.parsers.ParserConfigurationException;
                 } catch (ScannerException e) {
                     String message = "Failed to start scan " + scannerRequest.getProductName() + " due to invalid "
                             + "parameters : " + e.getMessage();
-                    CallbackUtil.updateScanStatus(scannerRequest.getJobId(), ScanStatus.ERROR, null, null);
-                    CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.ERROR);
+                    //                    CallbackUtil.updateScanStatus(scannerRequest.getJobId(), ScanStatus.ERROR, null, null);
+                    //                    CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.ERROR);
+                    log.error(message);
                 }
             } else {
                 String message = "Error occurred while submitting the start scan request since "
@@ -119,13 +130,12 @@ import javax.xml.parsers.ParserConfigurationException;
                 responseEntity = new ResponseEntity<>(
                         new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), message),
                         HttpStatus.INTERNAL_SERVER_ERROR);
-                CallbackUtil.updateScanStatus(scannerRequest.getJobId(), ScanStatus.ERROR, null, null);
-                CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.ERROR);
+                log.error(message);
+                //                CallbackUtil.updateScanStatus(scannerRequest.getJobId(), ScanStatus.ERROR, null, null);
+                //                CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.ERROR);
             }
         }
-
         return responseEntity;
-
     }
 
     @Override public ResponseEntity cancelScan(ScannerRequest scannerRequest) {
@@ -138,8 +148,7 @@ import javax.xml.parsers.ParserConfigurationException;
      * @param scannerRequest scanner request
      * @throws InvalidRequestException Invalid request error
      */
-    private void setQualysScannerParam(ScannerRequest scannerRequest) throws InvalidRequestException {
-
+    private Boolean setQualysScannerParam(ScannerRequest scannerRequest) throws InvalidRequestException {
         Map<String, List<String>> fileMap = scannerRequest.getFileMap();
         Map<String, List<String>> parameterMap = scannerRequest.getParameterMap();
         this.qualysScannerParam = new QualysScannerParam();
@@ -157,49 +166,60 @@ import javax.xml.parsers.ParserConfigurationException;
                             .get("productName").get(0), e);
         }
 
-        if (parameterMap.containsKey("type")) {
+        if (StringUtils.isEmpty(qualysScannerParam.getWebAppId())) {
+            return false;
+        }
+
+        if (parameterMap.containsKey(QualysScannerConstants.TYPE_KEYWORD)) {
             //Assuming the size of the list is one
-            qualysScannerParam.setType(parameterMap.get("type").get(0));
+            qualysScannerParam.setType(parameterMap.get(QualysScannerConstants.TYPE_KEYWORD).get(0));
         } else {
-            qualysScannerParam.setType(ConfigurationReader.getConfigProperty("type"));
+            qualysScannerParam.setType(ConfigurationReader.getConfigProperty(QualysScannerConstants.TYPE_KEYWORD));
         }
 
-        if (parameterMap.containsKey("scannerApplianceType")) {
-            qualysScannerParam.setScannerApplianceType(parameterMap.get("scannerApplianceType").get(0));
+        if (parameterMap.containsKey(QualysScannerConstants.SCANNER_APPILIANCE_TYPE_KEYWORD)) {
+            qualysScannerParam.setScannerApplianceType(
+                    parameterMap.get(QualysScannerConstants.SCANNER_APPILIANCE_TYPE_KEYWORD).get(0));
         } else {
-            qualysScannerParam.setScannerApplianceType(ConfigurationReader.getConfigProperty("scannerApplianceType"));
+            qualysScannerParam.setScannerApplianceType(
+                    ConfigurationReader.getConfigProperty(QualysScannerConstants.SCANNER_APPILIANCE_TYPE_KEYWORD));
         }
 
-        if (parameterMap.containsKey("profileName")) {
+        if (parameterMap.containsKey(QualysScannerConstants.PROFILE_NAME_KEYWORD)) {
             try {
                 qualysScannerParam.setProfileId(
                         getIdForGivenTag(QualysScannerConstants.QUALYS_OPTIONAL_PROFILE_LIST_FILE_PATH,
                                 QualysScannerConstants.QUALYS_OPTIONAL_PROFILE_TAG_NAME,
-                                parameterMap.get("profileName").get(0)));
+                                parameterMap.get(QualysScannerConstants.PROFILE_NAME_KEYWORD).get(0)));
             } catch (ParserConfigurationException | SAXException | IOException e) {
-                String message =
-                        "Error occurred in retrieving profile id for given profile :" + parameterMap.get("profileName")
-                                .get(0) + " ,since default profile will be used for the scan";
-                CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.WARN);
-                qualysScannerParam.setProfileId(ConfigurationReader.getConfigProperty("profileName"));
+                String message = "Error occurred in retrieving profile id for given profile :" + parameterMap
+                        .get(QualysScannerConstants.PROFILE_NAME_KEYWORD).get(0)
+                        + " ,since default profile will be used for the scan";
+                log.error(message);
+                //                CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.WARN);
+                qualysScannerParam.setProfileId(
+                        ConfigurationReader.getConfigProperty(QualysScannerConstants.PROFILE_NAME_KEYWORD));
             }
         } else {
-            qualysScannerParam.setProfileId(ConfigurationReader.getConfigProperty("profileName"));
+            qualysScannerParam
+                    .setProfileId(ConfigurationReader.getConfigProperty(QualysScannerConstants.PROFILE_NAME_KEYWORD));
         }
 
-        if (Boolean.parseBoolean(parameterMap.get("isProgressiveScanningEnabled").get(0))) {
-            qualysScannerParam.setProgressiveScanning("ENABLED");
+        if (Boolean.parseBoolean(parameterMap.get(QualysScannerConstants.PROGRESSIVE_SCAN).get(0))) {
+            qualysScannerParam.setProgressiveScanning(QualysScannerConstants.ENABLED);
         } else {
-            qualysScannerParam.setProgressiveScanning("DISABLED");
+            qualysScannerParam.setProgressiveScanning(QualysScannerConstants.DISABLED);
         }
 
-        if (parameterMap.containsKey("email")) {
-            qualysScannerParam.setEmail(parameterMap.get("email").get(0));
+        if (parameterMap.containsKey(QualysScannerConstants.EMAIL)) {
+            qualysScannerParam.setEmail(parameterMap.get(QualysScannerConstants.EMAIL).get(0));
         }
 
-        qualysScannerParam.setListOfAuthenticationScripts(fileMap.get("authenticationScripts"));
-        qualysScannerParam.setListOfCrawlingScripts(fileMap.get("authenticationScripts"));
-
+        qualysScannerParam.setListOfAuthenticationScripts(fileMap.get(QualysScannerConstants.AUTHENTICATION_SCRIPTS));
+        if (fileMap.containsKey(QualysScannerConstants.CRAWLINGSCRIPTS)) {
+            qualysScannerParam.setListOfCrawlingScripts(fileMap.get(QualysScannerConstants.CRAWLINGSCRIPTS));
+        }
+        return true;
     }
 
     /**
@@ -209,7 +229,6 @@ import javax.xml.parsers.ParserConfigurationException;
      * @throws ScannerException Error occurred while encoding the credentials.
      */
     private String setCredentials() throws ScannerException {
-
         String basicAuth;
         String qualysUsername = ConfigurationReader.getConfigProperty(QualysScannerConstants.USERNAME);
         String qualysPassword = ConfigurationReader.getConfigProperty(QualysScannerConstants.PASSWORD);
@@ -220,7 +239,6 @@ import javax.xml.parsers.ParserConfigurationException;
         } catch (UnsupportedEncodingException e) {
             throw new ScannerException("Qualys credentials could not be encoded\"", e);
         }
-
     }
 
     /**
@@ -229,11 +247,9 @@ import javax.xml.parsers.ParserConfigurationException;
      * @return formatted date and time
      */
     private static String getDate() {
-
         Date date = new Date();
         SimpleDateFormat ft = new SimpleDateFormat("E yyyy.MM.dd 'at' hh:mm:ss");
         return ft.format(date);
-
     }
 
     /**
@@ -249,7 +265,6 @@ import javax.xml.parsers.ParserConfigurationException;
      */
     private String getIdForGivenTag(String filePath, String tagName, String name)
             throws ParserConfigurationException, IOException, SAXException {
-
         File file = new File(filePath);
         String id = null;
         NodeList nodeList;
@@ -274,7 +289,5 @@ import javax.xml.parsers.ParserConfigurationException;
             }
         }
         return id;
-
     }
-
 }

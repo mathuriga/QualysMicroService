@@ -136,5 +136,4 @@ public class QualysScannerParam {
     public void setWebAppName(String webAppName) {
         this.webAppName = webAppName;
     }
-
 }

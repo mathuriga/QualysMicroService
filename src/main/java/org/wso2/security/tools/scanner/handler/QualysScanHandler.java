@@ -23,11 +23,9 @@ package org.wso2.security.tools.scanner.handler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.security.tools.scanner.QualysScannerConstants;
-import org.wso2.security.tools.scanner.ScannerConstants;
 import org.wso2.security.tools.scanner.config.QualysScannerParam;
 import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.exception.ScannerException;
-import org.wso2.security.tools.scanner.utils.CallbackUtil;
 import org.wso2.security.tools.scanner.utils.RequestBodyBuilder;
 import org.xml.sax.SAXException;
 
@@ -59,8 +57,7 @@ public class QualysScanHandler {
      * @throws ScannerException It wraps the exceptions while creating the prerequisite files.
      */
     public void initiateQualysScanner(String host) throws ScannerException {
-
-        log.info("STARTING QUALYS SCANNER");
+        log.info("INITIALIZING QUALYS SCANNER");
         // Generate a file which contains the list of web apps in qualys scan
         qualysApiInvoker.generatePrerequisiteFile(host.concat(QualysScannerConstants.QUALYS_GET_APPLICATION_API),
                 QualysScannerConstants.QUALYS_WEB_APPLICATION_LIST_FILE_PATH);
@@ -77,7 +74,6 @@ public class QualysScanHandler {
                 QualysScannerConstants.QUALYS_OPTIONAL_PROFILE_LIST_FILE_PATH);
         log.info("Optional profile list file is generated : "
                 + QualysScannerConstants.QUALYS_OPTIONAL_PROFILE_LIST_FILE_PATH);
-
     }
 
     /**
@@ -91,7 +87,6 @@ public class QualysScanHandler {
      */
     public String prepareScan(String jobId, QualysScannerParam qualysScannerParam, String host)
             throws ScannerException, InvalidRequestException {
-
         String authScriptId = null;
         try {
             if (qualysScannerParam.getListOfAuthenticationScripts().size() != 0) {
@@ -100,12 +95,12 @@ public class QualysScanHandler {
                                 qualysScannerParam.getListOfAuthenticationScripts());
                 authScriptId = qualysApiInvoker.addAuthenticationScript(host, addAuthRecordRequestBody);
                 String message = "Web Authentication Record is created :" + authScriptId;
-                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
+                //                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
+                log.info(message);
             }
         } catch (TransformerException | IOException | ParserConfigurationException | SAXException e) {
             throw new ScannerException("Error occurred while adding the authentication scripts ", e);
         }
-
         String updateWebAppRequestBody;
         try {
             updateWebAppRequestBody = RequestBodyBuilder
@@ -115,7 +110,8 @@ public class QualysScanHandler {
             if (updatedWebId.equalsIgnoreCase(qualysScannerParam.getWebAppId())) {
                 String message = "Newly added authentication script is added to web application : " + qualysScannerParam
                         .getWebAppId();
-                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
+                log.info(message);
+                //                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
             }
         } catch (ParserConfigurationException | TransformerException | SAXException | IOException e) {
             throw new ScannerException(
@@ -147,4 +143,3 @@ public class QualysScanHandler {
         return scannerScanId;
     }
 }
-

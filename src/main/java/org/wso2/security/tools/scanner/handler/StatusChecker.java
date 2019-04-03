@@ -40,6 +40,7 @@ import javax.xml.parsers.ParserConfigurationException;
  * Responsible to check the scan status.
  */
 public class StatusChecker {
+
     private static final Log log = LogFactory.getLog(StatusChecker.class);
     private static final int NUM_THREADS = 1;
     private ScheduledExecutorService scheduler;
@@ -61,18 +62,22 @@ public class StatusChecker {
         currentStatus.set("INITIATED");
     }
 
+    /**
+     * Activate status checker when Qualys scan id is generated.
+     */
     public void activateStatusChecker() {
         log.info("-------------------");
         Runnable checkStatusTask = new CheckStatusTask();
         scheduler.scheduleWithFixedDelay(checkStatusTask, initialDelay, delayBetweenRuns, TimeUnit.MINUTES);
         log.info("activated status checker");
-
     }
 
+    /**
+     * Runnable class to check status task.
+     */
     private final class CheckStatusTask implements Runnable {
-
+        // TODO: 4/3/19 Implement business logic based on response,
         @Override public void run() {
-
             log.info("Start checking the status of the scan.");
             String status;
             try {

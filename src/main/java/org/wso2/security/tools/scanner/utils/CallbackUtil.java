@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
  * Util class to represent the scan manager callback operations.
  */
 public class CallbackUtil {
+
     private static final Logger log = Logger.getLogger(CallbackUtil.class);
 
     private CallbackUtil() {
@@ -142,7 +143,7 @@ public class CallbackUtil {
      * @param urlString       url to do the http request
      * @param scanEntityParam String for the http request body
      * @return the response code of the http request response
-     * @throws IOException
+     * @throws IOException IO Exception occurred.
      */
     private static int doHttpPost(String urlString, String scanEntityParam) throws IOException {
         int responseCode;

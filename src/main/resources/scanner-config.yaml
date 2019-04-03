@@ -1,8 +1,7 @@
 username:
 password:
-scanner_bean_class:
+scanner_bean_class: QualysScanner
 host:
-scanner_type:
-scanner_appliance_type:
-
-option_profile_id:
+scanner_type: VULNERABILITY
+scanner_appliance_type: EXTERNAL
+default_profile_id: Profile1

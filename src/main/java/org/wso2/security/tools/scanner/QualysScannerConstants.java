@@ -59,5 +59,27 @@ public class QualysScannerConstants {
     public static final String QUALYS_OPTIONAL_PROFILE_TAG_NAME = "OptionProfile";
     public static final String NAME_KEYWORD = "name";
     public static final String ID_KEYWORD = "id";
-
+    public static final String TYPE_KEYWORD = "type";
+    public static final String SCANNER_APPILIANCE_TYPE_KEYWORD = "scannerApplianceType";
+    public static final String PROFILE_NAME_KEYWORD = "profileName";
+    public static final String PROGRESSIVE_SCAN = "isProgressiveScanningEnabled";
+    public static final String ENABLED = "ENABLED";
+    public static final String DISABLED = "DISABLED";
+    public static final String EMAIL = "EMAIL";
+    public static final String AUTHENTICATION_SCRIPTS = "authenticationScripts";
+    public static final String CRAWLINGSCRIPTS = "authenticationScripts";
+    public static final String SERVICE_REQUEST = "ServiceRequest";
+    public static final String DATA = "data";
+    public static final String WEB_APP_AUTH_RECORD = "WebAppAuthRecord";
+    public static final String FORM_RECORD = "formRecord";
+    public static final String SELENIUM = "SELENIUM";
+    public static final String SELENIUM_SCRIPT = "seleniumScript";
+    public static final String REGEX = "regex";
+    public static final String AUTH_RECORDS = "authRecords";
+    public static final String ADD ="add";
+    public static final String WAS_SCAN ="WasScan";
+    public static final String TARGET="target";
+    public static final String SCANNER_APPILIANCE="scannerAppliance";
+    public static final String PROFILE="profile";
+    public static final String PROGRESSIVE_SCANNING="progressiveScanning";
 }
