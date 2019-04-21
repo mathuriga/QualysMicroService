@@ -98,8 +98,17 @@ public class QualysApiInvoker {
         if (response.getStatusLine().getStatusCode() == 200) {
             isPurgedScan = true;
         }
-
         return isPurgedScan;
+    }
+
+    public Boolean cancelScan(String host, String scanId) throws IOException {
+        Boolean isScanCancelled = null;
+        String url = host.concat(QualysScannerConstants.QUALYS_CANCEL_SCAN_API).concat(scanId);
+        HttpResponse response = doHttpPost(url, null);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            isScanCancelled = true;
+        }
+        return isScanCancelled;
     }
 
     /**

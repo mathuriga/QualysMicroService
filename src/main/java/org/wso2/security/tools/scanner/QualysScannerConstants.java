@@ -35,7 +35,7 @@ public class QualysScannerConstants {
     //Qualys API Endpoint
     public static final String QUALYS_START_SCAN_API = "/qps/rest/3.0/launch/was/wasscan";
     public static final String QUALYS_PURGE_SCAN_API="/qps/rest/3.0/purge/was/webapp/";
-    //    public static final String QUALYS_CANCEL_SCAN_API = "/qps/rest/3.0/cancel/was/wasscan/";
+    public static final String QUALYS_CANCEL_SCAN_API = "/qps/rest/3.0/cancel/was/wasscan/";
     public static final String QUALYS_GET_STATUS_API = "/qps/rest/3.0/status/was/wasscan/";
     //    public static final String QUALYS_GET_REPORT_API = "/qps/rest/3.0/download/was/report/";
     public static final String QUALYS_GET_APPLICATION_API = "/qps/rest/3.0/search/was/webapp/";

@@ -98,31 +98,32 @@ import javax.xml.parsers.ParserConfigurationException;
         String scannerScanId;
         try {
             if (validateParameters(scannerRequest)) {
-                    authScriptId = qualysScanHandler.prepareScan(scannerRequest.getAppId(),scannerRequest.getJobId(),
-                            scannerRequest.getParameterMap().get(QualysScannerConstants.QUALYS_WEBAPP_TAG_NAME).get(0),
-                            scannerRequest.getFileMap(), host);
-                    ScanContext scanContext = new ScanContext();
-                    scanContext.setJobID(scannerRequest.getJobId());
-                    scanContext.setWebAppId(scannerRequest.getAppId());
-                    scanContext.setAuthId(authScriptId);
-                    scanContext.setProfileId(
-                            scannerRequest.getParameterMap().get(QualysScannerConstants.PROFILE_NAME_KEYWORD).get(0));
-                    scanContext.setType(scannerRequest.getParameterMap().get(QualysScannerConstants.TYPE_KEYWORD).get(0));
-                    scanContext.setScannerApplianceType(scannerRequest.getParameterMap().get(QualysScannerConstants.SCANNER_APPILIANCE_TYPE_KEYWORD)
-                            .get(0));
-                    if (Boolean.parseBoolean(
-                            scannerRequest.getParameterMap().get(QualysScannerConstants.PROGRESSIVE_SCAN).get(0))) {
-                        scanContext.setProgressiveScanning(QualysScannerConstants.ENABLED);
-                    } else {
-                        scanContext.setProgressiveScanning(QualysScannerConstants.DISABLED);
-                    }
-
-                    scannerScanId = qualysScanHandler.launchScan(scanContext, host);
-
-                    if (scannerScanId != null) {
-                        responseEntity = new ResponseEntity<>(HttpStatus.ACCEPTED);
-                    }
+                authScriptId = qualysScanHandler.prepareScan(scannerRequest.getAppId(), scannerRequest.getJobId(),
+                        scannerRequest.getParameterMap().get(QualysScannerConstants.QUALYS_WEBAPP_TAG_NAME).get(0),
+                        scannerRequest.getFileMap(), host);
+                ScanContext scanContext = new ScanContext();
+                scanContext.setJobID(scannerRequest.getJobId());
+                scanContext.setWebAppId(scannerRequest.getAppId());
+                scanContext.setAuthId(authScriptId);
+                scanContext.setProfileId(
+                        scannerRequest.getParameterMap().get(QualysScannerConstants.PROFILE_NAME_KEYWORD).get(0));
+                scanContext.setType(scannerRequest.getParameterMap().get(QualysScannerConstants.TYPE_KEYWORD).get(0));
+                scanContext.setScannerApplianceType(
+                        scannerRequest.getParameterMap().get(QualysScannerConstants.SCANNER_APPILIANCE_TYPE_KEYWORD)
+                                .get(0));
+                if (Boolean.parseBoolean(
+                        scannerRequest.getParameterMap().get(QualysScannerConstants.PROGRESSIVE_SCAN).get(0))) {
+                    scanContext.setProgressiveScanning(QualysScannerConstants.ENABLED);
+                } else {
+                    scanContext.setProgressiveScanning(QualysScannerConstants.DISABLED);
                 }
+
+                scannerScanId = qualysScanHandler.launchScan(scanContext, host);
+
+                if (scannerScanId != null) {
+                    responseEntity = new ResponseEntity<>(HttpStatus.ACCEPTED);
+                }
+            }
 
         } catch (ScannerException e) {
             String message =
@@ -146,7 +147,20 @@ import javax.xml.parsers.ParserConfigurationException;
     }
 
     @Override public ResponseEntity cancelScan(ScannerRequest scannerRequest) {
-        return null;
+        ResponseEntity responseEntity = null;
+        try {
+            qualysScanHandler.calcelScan(host, scannerRequest.getJobId(), "");
+            responseEntity = new ResponseEntity<>(new ErrorMessage(HttpStatus.ACCEPTED.value(), "Scan is cancelled"),
+                    HttpStatus.ACCEPTED);
+        } catch (ScannerException e) {
+            String message = "Error occurred while cancelling scan : " + scannerRequest.getAppId();
+
+            CallbackUtil.updateScanStatus(scannerRequest.getJobId(), ScanStatus.ERROR, null, null);
+            CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.ERROR);
+            responseEntity = new ResponseEntity<>(new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), message),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return responseEntity;
     }
 
     private Boolean validateParameters(ScannerRequest scannerRequest) throws InvalidRequestException {

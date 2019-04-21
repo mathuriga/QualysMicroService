@@ -20,6 +20,7 @@
 
 package org.wso2.security.tools.scanner.handler;
 
+import com.sun.xml.internal.ws.api.message.Packet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.http.HttpStatus;
@@ -30,8 +31,10 @@ import org.wso2.security.tools.scanner.config.QualysScannerParam;
 import org.wso2.security.tools.scanner.config.ScanContext;
 import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.exception.ScannerException;
+import org.wso2.security.tools.scanner.scanner.QualysScanner;
 import org.wso2.security.tools.scanner.utils.CallbackUtil;
 import org.wso2.security.tools.scanner.utils.RequestBodyBuilder;
+import org.wso2.security.tools.scanner.utils.ScanStatus;
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
@@ -165,5 +168,29 @@ public class QualysScanHandler {
             throw new ScannerException("Error occurred while launching the scan", e);
         }
         return scannerScanId;
+    }
+
+    public void calcelScan(String host, String scanId, String jobId) throws ScannerException {
+        try {
+            String status = qualysApiInvoker.retrieveStatus(host, scanId);
+            if ((status.equalsIgnoreCase(QualysScannerConstants.RUNNING)) || status
+                    .equalsIgnoreCase(QualysScannerConstants.SUBMITTED)) {
+                if (qualysApiInvoker.cancelScan(host, scanId)) {
+                    String message = "Scan id : " + scanId + " got cancelled as per request. ";
+                    CallbackUtil.updateScanStatus(jobId, ScanStatus.CANCELED, null, scanId);
+                    CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
+                } else {
+                    String message = "Could not cancel scan : " + scanId;
+                    CallbackUtil.updateScanStatus(jobId, ScanStatus.ERROR, null, scanId);
+                    CallbackUtil.persistScanLog(jobId, message, ScannerConstants.ERROR);
+                }
+            } else {
+                String message = "Could not find active scan for scanId : " + scanId;
+                CallbackUtil.updateScanStatus(jobId, ScanStatus.ERROR, null, scanId);
+                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.ERROR);
+            }
+        } catch (SAXException | ParserConfigurationException | IOException e) {
+            throw new ScannerException("Could not cancel scan : " + scanId, e);
+        }
     }
 }
