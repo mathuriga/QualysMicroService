@@ -26,6 +26,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.wso2.security.tools.scanner.QualysScannerConstants;
 import org.wso2.security.tools.scanner.config.QualysScannerParam;
+import org.wso2.security.tools.scanner.config.ScanContext;
+import org.wso2.security.tools.scanner.scanner.QualysScanner;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,14 +62,14 @@ public class RequestBodyBuilder {
     /**
      * Build request body to add authentication script
      *
-     * @param appName         Application name in qualys.
-     * @param listOfAuthFiles List of authentication files.
+     * @param appID    Application name in qualys.
+     * @param filePath Authentication script file path
      * @return Add Authentication Request Body in XML format.
      * @throws ParserConfigurationException Error occurred while parsing.
      * @throws IOException                  Error occurred while reading the XML content file.
      * @throws TransformerException         Error occurred while building secure string writer.
      */
-    public static String buildAddAuthScriptRequestBody(String appName, List<String> listOfAuthFiles)
+    public static String buildAddAuthScriptRequestBody(String appID, String filePath)
             throws ParserConfigurationException, IOException, TransformerException {
         String addAuthRecordRequestBody;
         DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
@@ -83,10 +85,10 @@ public class RequestBodyBuilder {
         Element webAppAuthRecord = doc.createElement(QualysScannerConstants.WEB_APP_AUTH_RECORD);
         data.appendChild(webAppAuthRecord);
 
-        File tempFile = new File(listOfAuthFiles.get(0));
+        File tempFile = new File(filePath);
         if (tempFile.exists()) {
             Element name = doc.createElement(QualysScannerConstants.NAME_KEYWORD);
-            name.appendChild(doc.createTextNode("Selenium Script for " + appName + " : " + getDate()));
+            name.appendChild(doc.createTextNode("Selenium Script for " + appID + " : " + getDate()));
             webAppAuthRecord.appendChild(name);
         } else {
             log.warn("Authentication script is not exist in " + tempFile.getAbsolutePath());
@@ -129,8 +131,7 @@ public class RequestBodyBuilder {
      * @throws ParserConfigurationException Error occurred while parsing.
      * @throws TransformerException         Error occurred while building secure string writer.
      */
-    // TODO: 4/3/19 build 
-    public static String updateWebAppRequestBody(String webAppName, String authId)
+    public static String buildUpdateWebAppRequestBody(String webAppName, String authId)
             throws ParserConfigurationException, TransformerException {
         String updateWebAppRequestBody;
         DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
@@ -168,16 +169,72 @@ public class RequestBodyBuilder {
         return updateWebAppRequestBody;
     }
 
+    public static String buildCreateReportRequestBody(String webAppId, String jobId, String reportFormat)
+            throws ParserConfigurationException, TransformerException {
+        String createReportRequestBody;
+        DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
+        DocumentBuilder builder = dbf.newDocumentBuilder();
+        Document document = builder.newDocument();
+        Element root = document.createElement(QualysScannerConstants.SERVICE_REQUEST);
+        document.appendChild(root);
+
+        Element data = document.createElement(QualysScannerConstants.DATA);
+        root.appendChild(data);
+
+        Element report = document.createElement(QualysScannerConstants.REPORT);
+        data.appendChild(report);
+
+        Element name = document.createElement(QualysScannerConstants.NAME_KEYWORD);
+        name.appendChild(document.createTextNode("Web Application Report " + webAppId + " : "));
+        report.appendChild(name);
+
+        Element description = document.createElement(QualysScannerConstants.DESCRIPTION);
+        description.appendChild(document.createTextNode("Web App Report for : " + jobId + " Date : " + getDate()));
+        report.appendChild(description);
+
+        Element format = document.createElement(QualysScannerConstants.FORMAT);
+        format.appendChild(document.createTextNode(reportFormat));
+        report.appendChild(format);
+
+        Element type = document.createElement(QualysScannerConstants.TYPE_KEYWORD);
+        type.appendChild(document.createTextNode(QualysScannerConstants.WAS_APP_REPORT));
+        report.appendChild(type);
+
+        Element config = document.createElement(QualysScannerConstants.CONFIG_KEYWORD);
+        report.appendChild(config);
+
+        Element webAppReport = document.createElement(QualysScannerConstants.WEB_APP_REPORT_KEYWORD);
+        config.appendChild(webAppReport);
+
+        Element target = document.createElement(QualysScannerConstants.TARGET);
+        webAppReport.appendChild(target);
+
+        Element webapps = document.createElement(QualysScannerConstants.WEBAPPS_TAG_NAME);
+        target.appendChild(webapps);
+
+        Element webapp = document.createElement(QualysScannerConstants.QUALYS_WEBAPP_TAG_NAME);
+        webapps.appendChild(webapp);
+
+        Element id = document.createElement(QualysScannerConstants.ID_KEYWORD);
+        id.appendChild(document.createTextNode(webAppId));
+        webapp.appendChild(id);
+
+        StringWriter stringWriter = buildSecureStringWriter(document);
+        createReportRequestBody = stringWriter.getBuffer().toString();
+
+        return createReportRequestBody;
+
+    }
+
     /**
      * Build launch scan request body.
      *
-     * @param qualysScannerParam Qualys scanner parameters.
-     * @param authScriptId       Auth script id.
+     * @param scanContext Qualys scanner parameters.
      * @return Launch scan request body in XML format.
      * @throws ParserConfigurationException Error occurred while parsing.
      * @throws TransformerException         Error occurred while building secure string writer.
      */
-    public static String buildLaunchScanRequestBody(QualysScannerParam qualysScannerParam, String authScriptId)
+    public static String buildLaunchScanRequestBody(ScanContext scanContext)
             throws ParserConfigurationException, TransformerException {
         String launchScanRequestBody;
         DocumentBuilderFactory dbf = getSecuredDocumentBuilderFactory();
@@ -193,11 +250,12 @@ public class RequestBodyBuilder {
         data.appendChild(wasScan);
 
         Element name = doc.createElement(QualysScannerConstants.NAME_KEYWORD);
-        name.appendChild(doc.createTextNode(qualysScannerParam.getScanName()));
+        name.appendChild(doc.createTextNode(
+                QualysScannerConstants.QUALYS_SCAN_NAME_PREFIX + scanContext.getWebAppName() + " " + getDate()));
         wasScan.appendChild(name);
 
         Element type = doc.createElement(QualysScannerConstants.TYPE_KEYWORD);
-        type.appendChild(doc.createTextNode(qualysScannerParam.getType()));
+        type.appendChild(doc.createTextNode(scanContext.getType()));
         wasScan.appendChild(type);
 
         Element target = doc.createElement(QualysScannerConstants.TARGET);
@@ -207,32 +265,32 @@ public class RequestBodyBuilder {
         target.appendChild(webApp);
 
         Element webAppId = doc.createElement(QualysScannerConstants.ID_KEYWORD);
-        webAppId.appendChild(doc.createTextNode(qualysScannerParam.getWebAppId()));
+        webAppId.appendChild(doc.createTextNode(scanContext.getWebAppId()));
         webApp.appendChild(webAppId);
 
         Element webAppAuthRecord = doc.createElement(QualysScannerConstants.WEB_APP_AUTH_RECORD);
         target.appendChild(webAppAuthRecord);
 
         Element webAppAuthRecordId = doc.createElement(QualysScannerConstants.ID_KEYWORD);
-        webAppAuthRecordId.appendChild(doc.createTextNode(authScriptId));
+        webAppAuthRecordId.appendChild(doc.createTextNode(scanContext.getAuthId()));
         webAppAuthRecord.appendChild(webAppAuthRecordId);
 
         Element scannerAppliance = doc.createElement(QualysScannerConstants.SCANNER_APPILIANCE);
         target.appendChild(scannerAppliance);
 
         Element scannerApplianceType = doc.createElement(QualysScannerConstants.TYPE_KEYWORD);
-        scannerApplianceType.appendChild(doc.createTextNode(qualysScannerParam.getScannerApplianceType()));
+        scannerApplianceType.appendChild(doc.createTextNode(scanContext.getScannerApplianceType()));
         scannerAppliance.appendChild(scannerApplianceType);
 
         Element profile = doc.createElement(QualysScannerConstants.PROFILE);
         wasScan.appendChild(profile);
 
         Element profileId = doc.createElement(QualysScannerConstants.ID_KEYWORD);
-        profileId.appendChild(doc.createTextNode(qualysScannerParam.getProfileId()));
+        profileId.appendChild(doc.createTextNode(scanContext.getProfileId()));
         profile.appendChild(profileId);
 
         Element progressiveScanning = doc.createElement(QualysScannerConstants.PROGRESSIVE_SCANNING);
-        progressiveScanning.appendChild(doc.createTextNode(qualysScannerParam.getProgressiveScanning()));
+        progressiveScanning.appendChild(doc.createTextNode(scanContext.getProgressiveScanning()));
         wasScan.appendChild(progressiveScanning);
 
         StringWriter stringWriter = buildSecureStringWriter(doc);

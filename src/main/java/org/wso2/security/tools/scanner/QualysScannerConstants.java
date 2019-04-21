@@ -20,6 +20,8 @@
 
 package org.wso2.security.tools.scanner;
 
+import org.wso2.security.tools.scanner.utils.ScanStatus;
+
 /**
  * Constants related to Qualys Scanner
  */
@@ -32,6 +34,7 @@ public class QualysScannerConstants {
 
     //Qualys API Endpoint
     public static final String QUALYS_START_SCAN_API = "/qps/rest/3.0/launch/was/wasscan";
+    public static final String QUALYS_PURGE_SCAN_API="/qps/rest/3.0/purge/was/webapp/";
     //    public static final String QUALYS_CANCEL_SCAN_API = "/qps/rest/3.0/cancel/was/wasscan/";
     public static final String QUALYS_GET_STATUS_API = "/qps/rest/3.0/status/was/wasscan/";
     //    public static final String QUALYS_GET_REPORT_API = "/qps/rest/3.0/download/was/report/";
@@ -40,6 +43,8 @@ public class QualysScannerConstants {
     public static final String QUALYS_GET_OPTIONAL_PROFILE_API = "/qps/rest/3.0/search/was/optionprofile/";
     public static final String QUALYS_ADD_AUTH_SCRIPT_API = "/qps/rest/3.0/create/was/webappauthrecord";
     public static final String QUALYS_WEB_UPDATE_API = "/qps/rest/3.0/update/was/webapp/";
+    public static final String QUALYS_WEB_APP_REPORT_CREATE_API="/qps/rest/3.0/create/was/report";
+    public static final String QUALYS_REPORT_DOWNLOAD_API="/qps/rest/3.0/download/was/report/";
 
     //Paths of the required files which are generated at Qualys Scanner initializing time
     public static final String QUALYS_WEB_APPLICATION_LIST_FILE_PATH = ScannerConstants.RESOURCE_FILE_PATH
@@ -55,6 +60,7 @@ public class QualysScannerConstants {
     public static final long DELAY_BETWEEN_STATUS_CHECK_TASK = 15;
 
     //Qualys Tag Names
+    public static final String WEBAPPS_TAG_NAME="webapps";
     public static final String QUALYS_WEBAPP_TAG_NAME = "WebApp";
     public static final String QUALYS_OPTIONAL_PROFILE_TAG_NAME = "OptionProfile";
     public static final String NAME_KEYWORD = "name";
@@ -67,7 +73,7 @@ public class QualysScannerConstants {
     public static final String DISABLED = "DISABLED";
     public static final String EMAIL = "EMAIL";
     public static final String AUTHENTICATION_SCRIPTS = "authenticationScripts";
-    public static final String CRAWLINGSCRIPTS = "authenticationScripts";
+    public static final String CRAWLINGSCRIPTS = "crawlingScripts";
     public static final String SERVICE_REQUEST = "ServiceRequest";
     public static final String DATA = "data";
     public static final String WEB_APP_AUTH_RECORD = "WebAppAuthRecord";
@@ -76,10 +82,50 @@ public class QualysScannerConstants {
     public static final String SELENIUM_SCRIPT = "seleniumScript";
     public static final String REGEX = "regex";
     public static final String AUTH_RECORDS = "authRecords";
-    public static final String ADD ="add";
-    public static final String WAS_SCAN ="WasScan";
-    public static final String TARGET="target";
-    public static final String SCANNER_APPILIANCE="scannerAppliance";
-    public static final String PROFILE="profile";
-    public static final String PROGRESSIVE_SCANNING="progressiveScanning";
+    public static final String ADD = "add";
+    public static final String WAS_SCAN = "WasScan";
+    public static final String TARGET = "target";
+    public static final String SCANNER_APPILIANCE = "scannerAppliance";
+    public static final String PROFILE = "profile";
+    public static final String PROFILE_ID = "profileId";
+    public static final String INTEGER_REGEX = "[0-9]+";
+    public static final String PROGRESSIVE_SCANNING = "progressiveScanning";
+    public static final String XML = ".xml";
+    public static final String REPORT="Report";
+    public static final String FORMAT="format";
+    public static final String DESCRIPTION="description";
+    public static final String WAS_APP_REPORT="WAS_WEBAPP_REPORT";
+    public static final String CONFIG_KEYWORD="config";
+    public static final String WEB_APP_REPORT_KEYWORD="webAppReport";
+
+    public static final String SCAN_STATUS="status";
+    public static final String AUTH_STATUS="authStatus";
+    public static final String RESULTS_STATUS="resultsStatus";
+
+    //Report Types
+    public static final String PDF_TYPE="PDF";
+    public static final String HTML_BASE64_TYPE="HTML_BASE64";
+    public static final String CSV_V2_TYPE="CSV_V2";
+    public static final String XML_TYPE="XML";
+
+    //Qualys Scanner Status
+    public static final String SUBMITTED = "SUBMITTED";
+    public static final String RUNNING = "RUNNING";
+    public static final String FINISHED = "FINISHED";
+    public static final String TIME_LIMIT_EXCEEDED = "TIME_LIMIT_EXCEEDED";
+    public static final String SCAN_NOT_LAUNCHED = "SCAN_NOT_LAUNCHED";
+    public static final String SCANNER_NOT_AVAILABLE = "SCANNER_NOT_AVAILABLE";
+    public static final String ERROR = "ERROR";
+    public static final String CANCELLED = "CANCELLED";
+    //Qualys auth status
+    public static final String AUTH_SUCCESSFUL = "SUCCESSFUL";
+    public static final String AUTH_FAILED = "FAILED";
+    public static final String AUTH_PARTIAL = "PARTIAL";
+    //Qualys Results Status
+    public static final String NO_HOST_ALIVE="NO_HOST_ALIVE";
+    public static final String NO_WEB_SERVICE="NO_WEB_SERVICE";
+    public static final String SCAN_RESULTS_INVALID="SCAN_RESULTS_INVALID";
+    public static final String SERVICE_ERROR="SERVICE_ERROR";
+    public static final String SCAN_INTERNAL_ERROR="SCAN_INTERNAL_ERROR";
+    public static final String SUCCESSFUL="SUCCESSFUL";
 }

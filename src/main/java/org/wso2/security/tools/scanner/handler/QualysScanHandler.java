@@ -22,14 +22,21 @@ package org.wso2.security.tools.scanner.handler;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.wso2.security.tools.scanner.QualysScannerConstants;
+import org.wso2.security.tools.scanner.ScannerConstants;
 import org.wso2.security.tools.scanner.config.QualysScannerParam;
+import org.wso2.security.tools.scanner.config.ScanContext;
 import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.exception.ScannerException;
+import org.wso2.security.tools.scanner.utils.CallbackUtil;
 import org.wso2.security.tools.scanner.utils.RequestBodyBuilder;
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
@@ -79,37 +86,45 @@ public class QualysScanHandler {
     /**
      * Prepare the scan before launching the scan. Main tasks are Adding the authentication scripts and crawling scripts.
      *
-     * @param qualysScannerParam Object that contains the scanner specific parameters.
-     * @param host               host url of qualys
+     * @param fileMap Map that contains the file paths.
+     * @param appID   Application ID
+     * @param jobID   Job ID
+     * @param appName Web Application Name
+     * @param host    host url of qualys
      * @return Authentication script id
-     * @throws ScannerException        Error occurred while adding authentication scripts
-     * @throws InvalidRequestException Invalid parameters for authentication scripts
+     * @throws ScannerException Error occurred while adding authentication scripts
      */
-    public String prepareScan(String jobId, QualysScannerParam qualysScannerParam, String host)
-            throws ScannerException, InvalidRequestException {
+    public String prepareScan(String appID, String jobID, String appName, Map<String, List<String>> fileMap,
+            String host) throws ScannerException {
         String authScriptId = null;
         try {
-            if (qualysScannerParam.getListOfAuthenticationScripts().size() != 0) {
-                String addAuthRecordRequestBody = RequestBodyBuilder
-                        .buildAddAuthScriptRequestBody(qualysScannerParam.getWebAppName(),
-                                qualysScannerParam.getListOfAuthenticationScripts());
-                authScriptId = qualysApiInvoker.addAuthenticationScript(host, addAuthRecordRequestBody);
-                String message = "Web Authentication Record is created :" + authScriptId;
-                //                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
-                log.info(message);
+            if (qualysApiInvoker.purgeScan(host, appID)) {
+                String message = "Purge Application Successfully:  " + appID;
+                CallbackUtil.persistScanLog(jobID, message, ScannerConstants.INFO);
             }
+        } catch (IOException e) {
+            String message = "Failed to purge application:  " + appID;
+            CallbackUtil.persistScanLog(jobID, message, ScannerConstants.ERROR);
+            throw new ScannerException("Error occurred while purging the Application Scan", e);
+        }
+
+        try {
+            //Only one authentication script can be given per single scan.
+            String addAuthRecordRequestBody = RequestBodyBuilder.buildAddAuthScriptRequestBody(appID,
+                    fileMap.get(QualysScannerConstants.AUTHENTICATION_SCRIPTS).get(0));
+            authScriptId = qualysApiInvoker.addAuthenticationScript(host, addAuthRecordRequestBody);
+            String message = "Web Authentication Record is created :" + authScriptId;
+            // CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
+            log.info(message);
         } catch (TransformerException | IOException | ParserConfigurationException | SAXException e) {
             throw new ScannerException("Error occurred while adding the authentication scripts ", e);
         }
         String updateWebAppRequestBody;
         try {
-            updateWebAppRequestBody = RequestBodyBuilder
-                    .updateWebAppRequestBody(qualysScannerParam.getWebAppName(), authScriptId);
-            String updatedWebId = qualysApiInvoker
-                    .updateWebApp(host, updateWebAppRequestBody, qualysScannerParam.getWebAppId());
-            if (updatedWebId.equalsIgnoreCase(qualysScannerParam.getWebAppId())) {
-                String message = "Newly added authentication script is added to web application : " + qualysScannerParam
-                        .getWebAppId();
+            updateWebAppRequestBody = RequestBodyBuilder.buildUpdateWebAppRequestBody(appName, authScriptId);
+            String updatedWebId = qualysApiInvoker.updateWebApp(host, updateWebAppRequestBody, appID);
+            if (updatedWebId.equalsIgnoreCase(updatedWebId)) {
+                String message = "Newly added authentication script is added to web application : " + updatedWebId;
                 log.info(message);
                 //                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
             }
@@ -117,26 +132,35 @@ public class QualysScanHandler {
             throw new ScannerException(
                     "Error occurred while updating the web app of Qualys with given authentication script", e);
         }
+
         return authScriptId;
     }
 
     /**
      * Launching the scan in qualys end
      *
-     * @param qualysScannerParam Object that contains the scanner specific parameters.
-     * @param authScriptId       Authentication Script Id
-     * @param host               host url of qualys
+     * @param scanContext Object that contains the scanner specific parameters.
+     * @param host        host url of qualys
      * @return Scanner scan Id
-     * @throws InvalidRequestException Error occurred while adding authentication scripts
-     * @throws ScannerException        Invalid parameters for authentication scripts
+     * @throws ScannerException Invalid parameters for authentication scripts
      */
-    public String launchScan(QualysScannerParam qualysScannerParam, String authScriptId, String host)
-            throws InvalidRequestException, ScannerException {
+    public String launchScan(ScanContext scanContext, String host) throws ScannerException {
         String launchScanRequestBody;
         String scannerScanId;
         try {
-            launchScanRequestBody = RequestBodyBuilder.buildLaunchScanRequestBody(qualysScannerParam, authScriptId);
+            launchScanRequestBody = RequestBodyBuilder.buildLaunchScanRequestBody(scanContext);
             scannerScanId = qualysApiInvoker.launchScan(host, launchScanRequestBody);
+            if (scannerScanId != null) {
+                scanContext.setScannerScanId(scannerScanId);
+                String message = "Qualys Scan for " + scanContext.getWebAppName() + " has successfully submitted : "
+                        + scannerScanId;
+                //                        CallbackUtil
+                //                                .updateScanStatus(scannerRequest.getJobId(), ScanStatus.SUBMITTED, null, scannerScanId);
+                //                        CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.INFO);
+                log.error(message);
+                StatusChecker statusChecker = new StatusChecker(qualysApiInvoker, scanContext, 1, 1);
+                statusChecker.activateStatusChecker();
+            }
         } catch (ParserConfigurationException | TransformerException | SAXException | IOException e) {
             throw new ScannerException("Error occurred while launching the scan", e);
         }

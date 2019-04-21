@@ -15,8 +15,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.wso2.security.tools.scanner.QualysScannerConstants;
-import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.exception.ScannerException;
+import org.wso2.security.tools.scanner.scanner.QualysScanner;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -37,11 +37,15 @@ public class QualysApiInvoker {
 
     private static final Log log = LogFactory.getLog(QualysApiInvoker.class);
 
-    private String basicAuth;
+    public char[] getBasicAuth() {
+        return basicAuth;
+    }
 
-    public void setBasicAuth(String basicAuth) {
+    public void setBasicAuth(char[] basicAuth) {
         this.basicAuth = basicAuth;
     }
+
+    private char[] basicAuth;
 
     /**
      * Generate prerequisite files from qualys back end
@@ -86,27 +90,37 @@ public class QualysApiInvoker {
         }
     }
 
+    public Boolean purgeScan(String host, String webAppId) throws IOException {
+        Boolean isPurgedScan = null;
+        String url = host.concat(QualysScannerConstants.QUALYS_PURGE_SCAN_API.concat(webAppId));
+        HttpResponse response = null;
+        response = doHttpPost(url, null);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            isPurgedScan = true;
+        }
+
+        return isPurgedScan;
+    }
+
     /**
      * Call the Api to add authentication script in qualys end.
      *
      * @param host                  qualys endpoint
      * @param authScriptRequestBody addAuthentication script request body.
      * @return auth script id
-     * @throws InvalidRequestException      Occurred due to Invalid request parameters.
      * @throws IOException                  Occurred IO exception while calling the api
      * @throws ParserConfigurationException Occurred while retrieving the script id.
      * @throws SAXException                 Occurred while retrieving the script id.
      */
     public String addAuthenticationScript(String host, String authScriptRequestBody)
-            throws InvalidRequestException, IOException, ParserConfigurationException, SAXException {
-        HttpPost postRequest = new HttpPost(host.concat(QualysScannerConstants.QUALYS_ADD_AUTH_SCRIPT_API));
-        postRequest.addHeader("Authorization", "Basic " + basicAuth);
-        HttpClient client = HttpClientBuilder.create().build();
-        StringEntity entity = new StringEntity(authScriptRequestBody, ContentType.create("text/xml", Consts.UTF_8));
-        HttpResponse response;
-        postRequest.setEntity(entity);
-        response = client.execute(postRequest);
-        return getRequiredData(response, "id");
+            throws IOException, ParserConfigurationException, SAXException {
+        String authScriptId = null;
+        String url = host.concat(QualysScannerConstants.QUALYS_ADD_AUTH_SCRIPT_API);
+        HttpResponse response = doHttpPost(url, authScriptRequestBody);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            authScriptId = getTagData(response, "id");
+        }
+        return authScriptId;
     }
 
     /**
@@ -116,21 +130,57 @@ public class QualysApiInvoker {
      * @param updateWebAppRequestBody update web app request body.
      * @param webId                   web id
      * @return web id
-     * @throws InvalidRequestException      Occurred due to Invalid request parameters.
      * @throws IOException                  Occurred IO exception while calling the api
      * @throws ParserConfigurationException Occurred while retrieving the web id.
      * @throws SAXException                 Occurred while retrieving the web id.
      */
     public String updateWebApp(String host, String updateWebAppRequestBody, String webId)
-            throws InvalidRequestException, IOException, ParserConfigurationException, SAXException {
-        HttpPost postRequest = new HttpPost(host.concat(QualysScannerConstants.QUALYS_WEB_UPDATE_API.concat(webId)));
-        postRequest.addHeader("Authorization", "Basic " + basicAuth);
-        HttpClient client = HttpClientBuilder.create().build();
-        StringEntity entity = new StringEntity(updateWebAppRequestBody, ContentType.create("text/xml", Consts.UTF_8));
-        HttpResponse response;
-        postRequest.setEntity(entity);
-        response = client.execute(postRequest);
-        return getRequiredData(response, "id");
+            throws IOException, ParserConfigurationException, SAXException {
+        String retrievedWebId = null;
+        String url = host.concat(host.concat(QualysScannerConstants.QUALYS_WEB_UPDATE_API.concat(webId)));
+        HttpResponse response = doHttpPost(url, updateWebAppRequestBody);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            retrievedWebId = getTagData(response, "id");
+        }
+        return retrievedWebId;
+    }
+
+    /**
+     * Call the Api to create scan report
+     *
+     * @param host                    Qualys endpoint
+     * @param createReportRequestBody create report request body
+     * @return report id
+     * @throws IOException                  Occurred IO exception while calling the api
+     * @throws ParserConfigurationException Occurred while retrieving the web id.
+     * @throws SAXException                 Occurred while retrieving the web id.
+     */
+    public String createReport(String host, String createReportRequestBody)
+            throws IOException, ParserConfigurationException, SAXException {
+        String reportId = null;
+        String url = host.concat(host.concat(QualysScannerConstants.QUALYS_WEB_APP_REPORT_CREATE_API));
+        HttpResponse response = doHttpPost(url, createReportRequestBody);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            reportId = getTagData(response, "id");
+        }
+        return reportId;
+    }
+
+    /**
+     * Download Report
+     *
+     * @param host     host ur;
+     * @param reportId report Id
+     * @throws IOException Occurred IO exception while calling the api
+     */
+    public Boolean downloadReport(String host, String reportId) throws IOException {
+        Boolean isDownloadSuccessfull = null;
+        String url = host.concat(QualysScannerConstants.QUALYS_REPORT_DOWNLOAD_API.concat(reportId));
+        HttpResponse response = doHttpGet(url);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            isDownloadSuccessfull = true;
+        }
+        return isDownloadSuccessfull;
     }
 
     /**
@@ -139,21 +189,19 @@ public class QualysApiInvoker {
      * @param host                  qualys endpoint
      * @param launchScanRequestBody launch scan request body.
      * @return scannerScanId
-     * @throws InvalidRequestException      Occurred due to Invalid request parameters.
      * @throws IOException                  Occurred IO exception while calling the api
      * @throws ParserConfigurationException Occurred while retrieving the web id.
      * @throws SAXException                 Occurred while retrieving the web id.
      */
     public String launchScan(String host, String launchScanRequestBody)
-            throws InvalidRequestException, IOException, ParserConfigurationException, SAXException {
-        HttpPost postRequest = new HttpPost(host.concat(QualysScannerConstants.QUALYS_START_SCAN_API));
-        postRequest.addHeader("Authorization", "Basic " + basicAuth);
-        HttpClient client = HttpClientBuilder.create().build();
-        StringEntity entity = new StringEntity(launchScanRequestBody, ContentType.create("text/xml", Consts.UTF_8));
-        HttpResponse response;
-        postRequest.setEntity(entity);
-        response = client.execute(postRequest);
-        return getRequiredData(response, "id");
+            throws IOException, ParserConfigurationException, SAXException {
+        String scanId = null;
+        String url = host.concat(QualysScannerConstants.QUALYS_START_SCAN_API);
+        HttpResponse response = doHttpPost(url, launchScanRequestBody);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            scanId = getTagData(response, "id");
+        }
+        return scanId;
     }
 
     /**
@@ -162,19 +210,35 @@ public class QualysApiInvoker {
      * @param host   qualys endpoint
      * @param scanId scan id
      * @return scan status
-     * @throws InvalidRequestException      Occurred due to Invalid request parameters.
      * @throws IOException                  Occurred IO exception while calling the api
      * @throws ParserConfigurationException Occurred while retrieving the web id.
      * @throws SAXException                 Occurred while retrieving the web id.
      */
     public String retrieveStatus(String host, String scanId)
-            throws IOException, InvalidRequestException, ParserConfigurationException, SAXException {
-        HttpGet getRequest = new HttpGet(host.concat(QualysScannerConstants.QUALYS_GET_STATUS_API.concat(scanId)));
-        getRequest.addHeader("Authorization", "Basic " + basicAuth);
-        getRequest.addHeader("Accept", "application/xml");
-        HttpClient client = HttpClientBuilder.create().build();
-        HttpResponse response = client.execute(getRequest);
-        return getRequiredData(response, "status");
+            throws IOException, ParserConfigurationException, SAXException {
+        return getStatus(host, scanId, QualysScannerConstants.SCAN_STATUS);
+
+    }
+
+    public String retrieveAuthStatus(String host, String scanId)
+            throws IOException, ParserConfigurationException, SAXException {
+        return getStatus(host, scanId, QualysScannerConstants.AUTH_STATUS);
+    }
+
+    public String retrieveResultStatus(String host, String scanId)
+            throws IOException, ParserConfigurationException, SAXException {
+        return getStatus(host, scanId, QualysScannerConstants.RESULTS_STATUS);
+    }
+
+    private String getStatus(String host, String scanId, String statusType)
+            throws IOException, ParserConfigurationException, SAXException {
+        String resultStatus = null;
+        String url = host.concat(QualysScannerConstants.QUALYS_GET_STATUS_API.concat(scanId));
+        HttpResponse response = doHttpGet(url);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            resultStatus = getTagData(response, statusType);
+        }
+        return resultStatus;
     }
 
     /**
@@ -183,42 +247,70 @@ public class QualysApiInvoker {
      * @param response http response
      * @param tagName  tag name
      * @return value
-     * @throws InvalidRequestException      Occurred due to Invalid request parameters.
      * @throws IOException                  Occurred IO exception while calling the api
      * @throws ParserConfigurationException Occurred while retrieving the web id.
      * @throws SAXException                 Occurred while retrieving the web id.
      */
     // TODO: 4/3/19 rename to getTagValue and use xpath
-    private String getRequiredData(HttpResponse response, String tagName)
-            throws InvalidRequestException, IOException, ParserConfigurationException, SAXException {
+    private String getTagData(HttpResponse response, String tagName)
+            throws IOException, ParserConfigurationException, SAXException {
         String result;
         String requiredData = null;
         String responseCode;
-        // TODO: 4/3/19 trywithresource
-        if (response.getStatusLine().getStatusCode() == 200) {
-            BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent(), "UTF-8"));
-            StringBuilder res = new StringBuilder();
+        StringBuilder res;
+        Document doc;
+        NodeList elementNodes;
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(response.getEntity().getContent(), "UTF-8"))) {
+            res = new StringBuilder();
             while ((result = br.readLine()) != null) {
                 res.append(result);
             }
-            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+            doc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
                     .parse(new InputSource(new StringReader(res.toString())));
-            NodeList errNodes = doc.getElementsByTagName("ServiceResponse");
-            if (errNodes.getLength() > 0) {
-                // TODO: 4/3/19 rename err
-                Element err = (Element) errNodes.item(0);
-                responseCode = err.getElementsByTagName("responseCode").item(0).getTextContent();
+            elementNodes = doc.getElementsByTagName("ServiceResponse");
+            if (elementNodes.getLength() > 0) {
+                Element element = (Element) elementNodes.item(0);
+                responseCode = element.getElementsByTagName("responseCode").item(0).getTextContent();
                 if (responseCode != null) {
                     if (responseCode.equals("SUCCESS")) {
-                        requiredData = err.getElementsByTagName(tagName).item(0).getTextContent();
+                        requiredData = element.getElementsByTagName(tagName).item(0).getTextContent();
                     }
                 }
             }
-        } else if (response.getStatusLine().getStatusCode() == 400) {
-            // TODO: 4/3/19 only throw
-            log.error("Given parameters are not valid.");
-            throw new InvalidRequestException("Given parameters are not valid.");
         }
         return requiredData;
     }
+
+    /**
+     * Does a http post request.
+     *
+     * @param url         host url
+     * @param requestBody http post request body
+     * @return response response of HTTP Post Request
+     * @throws IOException
+     */
+    private HttpResponse doHttpPost(String url, String requestBody) throws IOException {
+        HttpResponse response = null;
+        HttpPost postRequest = new HttpPost(url);
+        postRequest.addHeader("Authorization", "Basic " + basicAuth.toString());
+        HttpClient client = HttpClientBuilder.create().build();
+        StringEntity entity;
+        if (requestBody != null) {
+            entity = new StringEntity(requestBody, ContentType.create("text/xml", Consts.UTF_8));
+            postRequest.setEntity(entity);
+        }
+        response = client.execute(postRequest);
+        return response;
+    }
+
+    private HttpResponse doHttpGet(String url) throws IOException {
+        HttpGet getRequest = new HttpGet(url);
+        getRequest.addHeader("Authorization", "Basic " + basicAuth);
+        getRequest.addHeader("Accept", "application/xml");
+        HttpClient client = HttpClientBuilder.create().build();
+        HttpResponse response = client.execute(getRequest);
+        return response;
+    }
 }
+

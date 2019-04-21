@@ -27,114 +27,114 @@ import java.util.List;
  */
 // TODO: 4/3/19 scannercontext 
 public class QualysScannerParam {
-
-    // Qualys Scan Name (Mandatory)
-    private String scanName;
-
-    // Qualys Web Application Name (Mandatory which is retrieved from request)
-    private String webAppName;
-
-    // Qualys Web Application Id (Mandatory)
-    private String webAppId;
-
-    // Qualys Scan Type (Mandatory)
-    private String type;
-
-    // Scanner Appliance Type
-    private String scannerApplianceType;
-
-    //Scan profile Id (Mandatory)
-    private String profileId;
-
-    //ProgressiveScan (Optional)
-    private String progressiveScanning;
-
-    //Email to send notification regarding the Qualys Scan
-    private String email;
-
-    //List of WebAuthRecordIds (Authentication Scripts) (Mandatory)
-    private List<String> listOfAuthenticationScripts = new ArrayList<String>();
-
-    //List of Crawling Scripts (if required)
-    private List<String> listOfCrawlingScripts = new ArrayList<String>();
-
-    public String getScanName() {
-        return scanName;
-    }
-
-    public void setScanName(String scanName) {
-        this.scanName = scanName;
-    }
-
-    public String getWebAppId() {
-        return webAppId;
-    }
-
-    public void setWebAppId(String webAppId) {
-        this.webAppId = webAppId;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getScannerApplianceType() {
-        return scannerApplianceType;
-    }
-
-    public void setScannerApplianceType(String scannerApplianceType) {
-        this.scannerApplianceType = scannerApplianceType;
-    }
-
-    public List<String> getListOfAuthenticationScripts() {
-        return listOfAuthenticationScripts;
-    }
-
-    public void setListOfAuthenticationScripts(List<String> listOfAuthenticationScripts) {
-        this.listOfAuthenticationScripts = listOfAuthenticationScripts;
-    }
-
-    public List<String> getListOfCrawlingScripts() {
-        return listOfCrawlingScripts;
-    }
-
-    public void setListOfCrawlingScripts(List<String> listOfCrawlingScripts) {
-        this.listOfCrawlingScripts = listOfCrawlingScripts;
-    }
-
-    public String getProfileId() {
-        return profileId;
-    }
-
-    public void setProfileId(String profileId) {
-        this.profileId = profileId;
-    }
-
-    public String getProgressiveScanning() {
-        return progressiveScanning;
-    }
-
-    public void setProgressiveScanning(String progressiveScanning) {
-        this.progressiveScanning = progressiveScanning;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getWebAppName() {
-        return webAppName;
-    }
-
-    public void setWebAppName(String webAppName) {
-        this.webAppName = webAppName;
-    }
+//
+////    // Qualys Scan Name (Mandatory)
+////    private String scanName;
+////
+////    // Qualys Web Application Name (Mandatory which is retrieved from request)
+////    private String webAppName;
+//
+//    // Qualys Web Application Id (Mandatory)
+//    private String webAppId;
+//
+//    // Qualys Scan Type (Mandatory)
+//    private String type;
+//
+//    // Scanner Appliance Type
+//    private String scannerApplianceType;
+//
+//    //Scan profile Id (Mandatory)
+//    private String profileId;
+//
+//    //ProgressiveScan (Optional)
+//    private String progressiveScanning;
+//
+//    //Email to send notification regarding the Qualys Scan
+//    private String email;
+//
+//    //List of WebAuthRecordIds (Authentication Scripts) (Mandatory)
+//    private List<String> listOfAuthenticationScripts = new ArrayList<String>();
+//
+//    //List of Crawling Scripts (if required)
+//    private List<String> listOfCrawlingScripts = new ArrayList<String>();
+//
+//    public String getScanName() {
+//        return scanName;
+//    }
+//
+//    public void setScanName(String scanName) {
+//        this.scanName = scanName;
+////    }
+//
+//    public String getWebAppId() {
+//        return webAppId;
+//    }
+//
+//    public void setWebAppId(String webAppId) {
+//        this.webAppId = webAppId;
+//    }
+//
+//    public String getType() {
+//        return type;
+//    }
+//
+//    public void setType(String type) {
+//        this.type = type;
+//    }
+//
+//    public String getScannerApplianceType() {
+//        return scannerApplianceType;
+//    }
+//
+//    public void setScannerApplianceType(String scannerApplianceType) {
+//        this.scannerApplianceType = scannerApplianceType;
+//    }
+//
+////    public List<String> getListOfAuthenticationScripts() {
+////        return listOfAuthenticationScripts;
+////    }
+//
+////    public void setListOfAuthenticationScripts(List<String> listOfAuthenticationScripts) {
+////        this.listOfAuthenticationScripts = listOfAuthenticationScripts;
+////    }
+//
+////    public List<String> getListOfCrawlingScripts() {
+////        return listOfCrawlingScripts;
+////    }
+////
+////    public void setListOfCrawlingScripts(List<String> listOfCrawlingScripts) {
+////        this.listOfCrawlingScripts = listOfCrawlingScripts;
+////    }
+//
+//    public String getProfileId() {
+//        return profileId;
+//    }
+//
+//    public void setProfileId(String profileId) {
+//        this.profileId = profileId;
+//    }
+//
+//    public String getProgressiveScanning() {
+//        return progressiveScanning;
+//    }
+//
+//    public void setProgressiveScanning(String progressiveScanning) {
+//        this.progressiveScanning = progressiveScanning;
+//    }
+//
+////    public String getEmail() {
+////        return email;
+////    }
+////
+////    public void setEmail(String email) {
+////        this.email = email;
+////    }
+////
+////    public String getWebAppName() {
+////        return webAppName;
+////    }
+////
+////    public void setWebAppName(String webAppName) {
+////        this.webAppName = webAppName;
+////    }
 }
