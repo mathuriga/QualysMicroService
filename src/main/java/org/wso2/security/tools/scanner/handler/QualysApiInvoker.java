@@ -1,10 +1,7 @@
 package org.wso2.security.tools.scanner.handler;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.http.Consts;
 import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -15,15 +12,10 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.wso2.security.tools.scanner.QualysScannerConstants;
-import org.wso2.security.tools.scanner.exception.ScannerException;
-import org.wso2.security.tools.scanner.scanner.QualysScanner;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
@@ -35,11 +27,11 @@ import javax.xml.parsers.ParserConfigurationException;
  */
 public class QualysApiInvoker {
 
-    private static final Log log = LogFactory.getLog(QualysApiInvoker.class);
+    //    private static final Log log = LogFactory.getLog(QualysApiInvoker.class);
 
-    public char[] getBasicAuth() {
-        return basicAuth;
-    }
+    //    public char[] getBasicAuth() {
+    //        return basicAuth;
+    //    }
 
     public void setBasicAuth(char[] basicAuth) {
         this.basicAuth = basicAuth;
@@ -48,65 +40,47 @@ public class QualysApiInvoker {
     private char[] basicAuth;
 
     /**
-     * Generate prerequisite files from qualys back end
+     * Purge Web Application.
      *
-     * @param endPoint Qualys endpoint to get relevant files
-     * @param filePath file path where the file should be created.
-     * @throws ScannerException the error occurred while generating the file.
+     * @param host     host of Qualys Scanner
+     * @param webAppId Web Application Id
+     * @return true if application is purged successfully
+     * @throws IOException                  error occurred while purging the application
+     * @throws ParserConfigurationException Occurred while retrieving the web id.
+     * @throws SAXException                 Occurred while retrieving the web id.
      */
-    public void generatePrerequisiteFile(String endPoint, String filePath) throws ScannerException {
-        String result;
-        File tempFile = new File(filePath);
-        boolean exists = tempFile.exists();
-        // TODO: 4/3/19 trywith resource 
-        try {
-            if (!exists) {
-                // TODO: 4/3/19 common
-                HttpPost postRequest = new HttpPost(endPoint);
-                postRequest.addHeader("Authorization", "Basic " + basicAuth);
-                postRequest.addHeader("Accept", "application/xml");
-                HttpClient client = HttpClientBuilder.create().build();
-                HttpResponse response = client.execute(postRequest);
-                if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-                    BufferedReader br = new BufferedReader(
-                            new InputStreamReader(response.getEntity().getContent(), "UTF-8"));
-                    StringBuilder res = new StringBuilder();
-                    while ((result = br.readLine()) != null) {
-                        res.append(result);
-                    }
-                    BufferedWriter bwr = new BufferedWriter(new FileWriter(new File(filePath)));
-                    bwr.write(res.toString());
-                    bwr.flush();
-                    bwr.close();
-                    br.close();
-                } else if (response.getStatusLine().getStatusCode() == HttpStatus.SC_UNAUTHORIZED) {
-                    throw new ScannerException("The API request failed because of an authentication failure. ");
-                } else {
-                    throw new ScannerException("Error occurred while retrieving the list of Web APP, Profile list");
-                }
-            }
-        } catch (IOException e) {
-            throw new ScannerException("Error occurred while retrieving the list of Web APP, Profile list", e);
-        }
-    }
-
-    public Boolean purgeScan(String host, String webAppId) throws IOException {
+    public Boolean purgeScan(String host, String webAppId)
+            throws IOException, ParserConfigurationException, SAXException {
         Boolean isPurgedScan = null;
         String url = host.concat(QualysScannerConstants.QUALYS_PURGE_SCAN_API.concat(webAppId));
-        HttpResponse response = null;
+        HttpResponse response;
         response = doHttpPost(url, null);
         if (response.getStatusLine().getStatusCode() == 200) {
-            isPurgedScan = true;
+            if (webAppId.equalsIgnoreCase(getTagData(response, "id"))) {
+                isPurgedScan = true;
+            }
         }
         return isPurgedScan;
     }
 
-    public Boolean cancelScan(String host, String scanId) throws IOException {
+    /**
+     * Invoke Qualys Api
+     * @param host host url
+     * @param scanId scanId
+     * @return return true if cancelled
+     * @throws IOException                  error occurred while cancelling the application
+     * @throws ParserConfigurationException Occurred while retrieving the cancel Scan.
+     * @throws SAXException                 Occurred while retrieving the cancel Scan.
+     */
+    public Boolean cancelScan(String host, String scanId) throws IOException, ParserConfigurationException,
+            SAXException {
         Boolean isScanCancelled = null;
         String url = host.concat(QualysScannerConstants.QUALYS_CANCEL_SCAN_API).concat(scanId);
         HttpResponse response = doHttpPost(url, null);
         if (response.getStatusLine().getStatusCode() == 200) {
-            isScanCancelled = true;
+            if (scanId.equalsIgnoreCase(getTagData(response, "id"))) {
+                isScanCancelled = true;
+            }
         }
         return isScanCancelled;
     }
@@ -146,7 +120,7 @@ public class QualysApiInvoker {
     public String updateWebApp(String host, String updateWebAppRequestBody, String webId)
             throws IOException, ParserConfigurationException, SAXException {
         String retrievedWebId = null;
-        String url = host.concat(host.concat(QualysScannerConstants.QUALYS_WEB_UPDATE_API.concat(webId)));
+        String url = host.concat(QualysScannerConstants.QUALYS_WEB_UPDATE_API).concat(webId);
         HttpResponse response = doHttpPost(url, updateWebAppRequestBody);
         if (response.getStatusLine().getStatusCode() == 200) {
             retrievedWebId = getTagData(response, "id");
@@ -199,8 +173,8 @@ public class QualysApiInvoker {
      * @param launchScanRequestBody launch scan request body.
      * @return scannerScanId
      * @throws IOException                  Occurred IO exception while calling the api
-     * @throws ParserConfigurationException Occurred while retrieving the web id.
-     * @throws SAXException                 Occurred while retrieving the web id.
+     * @throws ParserConfigurationException Occurred while retrieving the scan id
+     * @throws SAXException                 Occurred while retrieving the scan id
      */
     public String launchScan(String host, String launchScanRequestBody)
             throws IOException, ParserConfigurationException, SAXException {
@@ -214,31 +188,62 @@ public class QualysApiInvoker {
     }
 
     /**
-     * Retrieve Scan Status
+     * Retrieve Scan status. @see <a href="https://www.qualys.com/docs/qualys-was-api-user-guide.pdf</a>.
      *
      * @param host   qualys endpoint
      * @param scanId scan id
      * @return scan status
      * @throws IOException                  Occurred IO exception while calling the api
-     * @throws ParserConfigurationException Occurred while retrieving the web id.
-     * @throws SAXException                 Occurred while retrieving the web id.
+     * @throws ParserConfigurationException Occurred while retrieving the status
+     * @throws SAXException                 Occurred while retrieving the status
      */
     public String retrieveStatus(String host, String scanId)
             throws IOException, ParserConfigurationException, SAXException {
-        return getStatus(host, scanId, QualysScannerConstants.SCAN_STATUS);
+        return getStatus(host, scanId, QualysScannerConstants.SCAN_STATUS_TAG);
 
     }
 
+    /**
+     * Retrieve auth status. @see <a href="https://www.qualys.com/docs/qualys-was-api-user-guide.pdf</a>.
+     *
+     * @param host   qualys endpoint
+     * @param scanId scan id
+     * @return scan status
+     * @throws IOException                  Occurred IO exception while calling the api
+     * @throws ParserConfigurationException Occurred while retrieving the status
+     * @throws SAXException                 Occurred while retrieving the status
+     */
     public String retrieveAuthStatus(String host, String scanId)
             throws IOException, ParserConfigurationException, SAXException {
-        return getStatus(host, scanId, QualysScannerConstants.AUTH_STATUS);
+        return getStatus(host, scanId, QualysScannerConstants.AUTH_STATUS_TAG);
     }
 
+    /**
+     * Retrieve Scan result status. @see <a href="https://www.qualys.com/docs/qualys-was-api-user-guide.pdf</a>.
+     *
+     * @param host   qualys endpoint
+     * @param scanId scan id
+     * @return scan status
+     * @throws IOException                  Occurred IO exception while calling the api
+     * @throws ParserConfigurationException Occurred while retrieving the status
+     * @throws SAXException                 Occurred while retrieving the status
+     */
     public String retrieveResultStatus(String host, String scanId)
             throws IOException, ParserConfigurationException, SAXException {
-        return getStatus(host, scanId, QualysScannerConstants.RESULTS_STATUS);
+        return getStatus(host, scanId, QualysScannerConstants.RESULTS_STATUS_TAG);
     }
 
+    /**
+     * Retrieve status based on status group type.
+     *
+     * @param host       qualys endpoint
+     * @param scanId     scanId
+     * @param statusType Status Type
+     * @return status
+     * @throws IOException                  Occurred IO exception while calling the api
+     * @throws ParserConfigurationException Occurred while retrieving the status
+     * @throws SAXException                 Occurred while retrieving the status
+     */
     private String getStatus(String host, String scanId, String statusType)
             throws IOException, ParserConfigurationException, SAXException {
         String resultStatus = null;
@@ -257,8 +262,8 @@ public class QualysApiInvoker {
      * @param tagName  tag name
      * @return value
      * @throws IOException                  Occurred IO exception while calling the api
-     * @throws ParserConfigurationException Occurred while retrieving the web id.
-     * @throws SAXException                 Occurred while retrieving the web id.
+     * @throws ParserConfigurationException Occurred while retrieving the data
+     * @throws SAXException                 Occurred while retrieving the data
      */
     // TODO: 4/3/19 rename to getTagValue and use xpath
     private String getTagData(HttpResponse response, String tagName)
@@ -292,17 +297,17 @@ public class QualysApiInvoker {
     }
 
     /**
-     * Does a http post request.
+     * Perform a http post request.
      *
-     * @param url         host url
+     * @param url         url
      * @param requestBody http post request body
      * @return response response of HTTP Post Request
-     * @throws IOException
+     * @throws IOException Error occurred while processing the http post request
      */
     private HttpResponse doHttpPost(String url, String requestBody) throws IOException {
-        HttpResponse response = null;
+        HttpResponse response;
         HttpPost postRequest = new HttpPost(url);
-        postRequest.addHeader("Authorization", "Basic " + basicAuth.toString());
+        postRequest.addHeader("Authorization", "Basic " + new String(basicAuth));
         HttpClient client = HttpClientBuilder.create().build();
         StringEntity entity;
         if (requestBody != null) {
@@ -313,13 +318,18 @@ public class QualysApiInvoker {
         return response;
     }
 
+    /**
+     * Perform a http get request.
+     *
+     * @param url url
+     * @return response
+     * @throws IOException Error occurred while processing the http post request
+     */
     private HttpResponse doHttpGet(String url) throws IOException {
         HttpGet getRequest = new HttpGet(url);
-        getRequest.addHeader("Authorization", "Basic " + basicAuth);
+        getRequest.addHeader("Authorization", "Basic " + new String(basicAuth));
         getRequest.addHeader("Accept", "application/xml");
         HttpClient client = HttpClientBuilder.create().build();
-        HttpResponse response = client.execute(getRequest);
-        return response;
+        return client.execute(getRequest);
     }
 }
-

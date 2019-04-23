@@ -20,18 +20,11 @@
 
 package org.wso2.security.tools.scanner.handler;
 
-import com.sun.xml.internal.ws.api.message.Packet;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.wso2.security.tools.scanner.QualysScannerConstants;
 import org.wso2.security.tools.scanner.ScannerConstants;
-import org.wso2.security.tools.scanner.config.QualysScannerParam;
+import org.wso2.security.tools.scanner.config.ConfigurationReader;
 import org.wso2.security.tools.scanner.config.ScanContext;
-import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.exception.ScannerException;
-import org.wso2.security.tools.scanner.scanner.QualysScanner;
 import org.wso2.security.tools.scanner.utils.CallbackUtil;
 import org.wso2.security.tools.scanner.utils.RequestBodyBuilder;
 import org.wso2.security.tools.scanner.utils.ScanStatus;
@@ -48,104 +41,73 @@ import javax.xml.transform.TransformerException;
  */
 public class QualysScanHandler {
 
-    private final Log log = LogFactory.getLog(QualysScanHandler.class);
+    //    private final Log log = LogFactory.getLog(QualysScanHandler.class);
     private QualysApiInvoker qualysApiInvoker;
 
     public QualysScanHandler(QualysApiInvoker qualysApiInvoker) {
         this.qualysApiInvoker = qualysApiInvoker;
     }
 
-    public QualysApiInvoker getQualysApiInvoker() {
-        return qualysApiInvoker;
-    }
-
-    /**
-     * This method used to initiate the Qualys scanner when the qualys scanner is launched first time. All the
-     * prerequisite files will be created during this method execution.
-     *
-     * @param host Qualys scanner host endpoint.
-     * @throws ScannerException It wraps the exceptions while creating the prerequisite files.
-     */
-    public void initiateQualysScanner(String host) throws ScannerException {
-        log.info("INITIALIZING QUALYS SCANNER");
-        // Generate a file which contains the list of web apps in qualys scan
-        qualysApiInvoker.generatePrerequisiteFile(host.concat(QualysScannerConstants.QUALYS_GET_APPLICATION_API),
-                QualysScannerConstants.QUALYS_WEB_APPLICATION_LIST_FILE_PATH);
-        log.info("Web Application list file is generated : "
-                + QualysScannerConstants.QUALYS_WEB_APPLICATION_LIST_FILE_PATH);
-        // Generate a file which contains the list of authentication scripts in qualys scan
-        qualysApiInvoker
-                .generatePrerequisiteFile(host.concat(QualysScannerConstants.QUALYS_GET_AUTHENTICATION_SCRIPT_API),
-                        QualysScannerConstants.QUALYS_AUTHENTICATION_LIST_FILE_PATH);
-        log.info("Authentication list file is generated : "
-                + QualysScannerConstants.QUALYS_AUTHENTICATION_LIST_FILE_PATH);
-        // Generate a file which contains the list of profiles in qualys scan
-        qualysApiInvoker.generatePrerequisiteFile(host.concat(QualysScannerConstants.QUALYS_GET_OPTIONAL_PROFILE_API),
-                QualysScannerConstants.QUALYS_OPTIONAL_PROFILE_LIST_FILE_PATH);
-        log.info("Optional profile list file is generated : "
-                + QualysScannerConstants.QUALYS_OPTIONAL_PROFILE_LIST_FILE_PATH);
-    }
+    //    public QualysApiInvoker getQualysApiInvoker() {
+    //        return qualysApiInvoker;
+    //    }
 
     /**
      * Prepare the scan before launching the scan. Main tasks are Adding the authentication scripts and crawling scripts.
      *
      * @param fileMap Map that contains the file paths.
      * @param appID   Application ID
-     * @param jobID   Job ID
+     * @param jobId   Job ID
      * @param appName Web Application Name
      * @param host    host url of qualys
      * @return Authentication script id
      * @throws ScannerException Error occurred while adding authentication scripts
      */
-    public String prepareScan(String appID, String jobID, String appName, Map<String, List<String>> fileMap,
+    public String prepareScan(String appID, String jobId, String appName, Map<String, List<String>> fileMap,
             String host) throws ScannerException {
-        String authScriptId = null;
+        String authScriptId;
+        // Purging Scan before launching the scan.
         try {
             if (qualysApiInvoker.purgeScan(host, appID)) {
-                String message = "Purge Application Successfully:  " + appID;
-                CallbackUtil.persistScanLog(jobID, message, ScannerConstants.INFO);
+                String message = "Application : " + appID + " is purged successfully ";
+                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
             }
-        } catch (IOException e) {
-            String message = "Failed to purge application:  " + appID;
-            CallbackUtil.persistScanLog(jobID, message, ScannerConstants.ERROR);
-            throw new ScannerException("Error occurred while purging the Application Scan", e);
+        } catch (IOException | SAXException | ParserConfigurationException e) {
+            throw new ScannerException("Error occurred while purging the Application Scan : " + appID, e);
         }
-
+        // Add authentication script to Qualys scanner..
         try {
             //Only one authentication script can be given per single scan.
             String addAuthRecordRequestBody = RequestBodyBuilder.buildAddAuthScriptRequestBody(appID,
                     fileMap.get(QualysScannerConstants.AUTHENTICATION_SCRIPTS).get(0));
             authScriptId = qualysApiInvoker.addAuthenticationScript(host, addAuthRecordRequestBody);
             String message = "Web Authentication Record is created :" + authScriptId;
-            // CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
-            log.info(message);
+            CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
         } catch (TransformerException | IOException | ParserConfigurationException | SAXException e) {
             throw new ScannerException("Error occurred while adding the authentication scripts ", e);
         }
-        String updateWebAppRequestBody;
+        // Update web application with added authentication script.
         try {
-            updateWebAppRequestBody = RequestBodyBuilder.buildUpdateWebAppRequestBody(appName, authScriptId);
+            String updateWebAppRequestBody = RequestBodyBuilder.buildUpdateWebAppRequestBody(appName, authScriptId);
             String updatedWebId = qualysApiInvoker.updateWebApp(host, updateWebAppRequestBody, appID);
-            if (updatedWebId.equalsIgnoreCase(updatedWebId)) {
-                String message = "Newly added authentication script is added to web application : " + updatedWebId;
-                log.info(message);
-                //                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
+            if (appID.equalsIgnoreCase(updatedWebId)) {
+                String message = "Newly added Web Authentication  Record is added to web application : " + updatedWebId;
+                CallbackUtil.persistScanLog(jobId, message, ScannerConstants.INFO);
             }
         } catch (ParserConfigurationException | TransformerException | SAXException | IOException e) {
             throw new ScannerException(
                     "Error occurred while updating the web app of Qualys with given authentication script", e);
         }
-
         return authScriptId;
     }
 
     /**
-     * Launching the scan in qualys end
+     * Launching the scan in qualys scan portal.
      *
      * @param scanContext Object that contains the scanner specific parameters.
      * @param host        host url of qualys
      * @return Scanner scan Id
-     * @throws ScannerException Invalid parameters for authentication scripts
+     * @throws ScannerException Error occurred while launching the scan
      */
     public String launchScan(ScanContext scanContext, String host) throws ScannerException {
         String launchScanRequestBody;
@@ -157,20 +119,29 @@ public class QualysScanHandler {
                 scanContext.setScannerScanId(scannerScanId);
                 String message = "Qualys Scan for " + scanContext.getWebAppName() + " has successfully submitted : "
                         + scannerScanId;
-                //                        CallbackUtil
-                //                                .updateScanStatus(scannerRequest.getJobId(), ScanStatus.SUBMITTED, null, scannerScanId);
-                //                        CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.INFO);
-                log.error(message);
-                StatusChecker statusChecker = new StatusChecker(qualysApiInvoker, scanContext, 1, 1);
+                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.SUBMITTED, null, scannerScanId);
+                CallbackUtil.persistScanLog(scanContext.getJobID(), message, ScannerConstants.INFO);
+                StatusChecker statusChecker = new StatusChecker(qualysApiInvoker, scanContext,
+                        Long.parseLong(ConfigurationReader.getConfigProperty(QualysScannerConstants.INITAL_DELAY)),
+                        Long.parseLong(ConfigurationReader
+                                .getConfigProperty(QualysScannerConstants.DELAY_BETWEEN_STATUS_CHECK_TASK)));
                 statusChecker.activateStatusChecker();
             }
         } catch (ParserConfigurationException | TransformerException | SAXException | IOException e) {
-            throw new ScannerException("Error occurred while launching the scan", e);
+            throw new ScannerException("Error occurred while launching the scan for " + scanContext.getJobID(), e);
         }
         return scannerScanId;
     }
 
-    public void calcelScan(String host, String scanId, String jobId) throws ScannerException {
+    /**
+     * Cancelling Scan.
+     *
+     * @param host   host url
+     * @param scanId scanId
+     * @param jobId  JibID
+     * @throws ScannerException Error occurred while cancelling scan.
+     */
+    public void cancelScan(String host, String scanId, String jobId) throws ScannerException {
         try {
             String status = qualysApiInvoker.retrieveStatus(host, scanId);
             if ((status.equalsIgnoreCase(QualysScannerConstants.RUNNING)) || status

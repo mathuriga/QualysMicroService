@@ -21,7 +21,7 @@
 package org.wso2.security.tools.scanner.config;
 
 /**
- * TODO : Class level comment
+ * Qualys Scan Context
  */
 public class ScanContext {
     private String jobID;

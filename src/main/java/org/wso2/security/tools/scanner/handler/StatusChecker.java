@@ -32,8 +32,6 @@ import org.wso2.security.tools.scanner.QualysScannerConstants;
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -51,17 +49,19 @@ public class StatusChecker {
     private ScheduledExecutorService scheduler;
     private final long initialDelay;
     private final long delayBetweenRuns;
-    private static AtomicReference<ScanStatus> currentStatus = new AtomicReference<ScanStatus>();
+    private static AtomicReference<ScanStatus> currentStatus = new AtomicReference<>();
+    private static AtomicReference<String> currentScannerStatus = new AtomicReference<>();
     private QualysApiInvoker qualysApiInvoker;
     private ScanContext scanContext;
 
-    public StatusChecker(QualysApiInvoker qualysApiInvoker, ScanContext scanContext, long initialDelay,
+    StatusChecker(QualysApiInvoker qualysApiInvoker, ScanContext scanContext, long initialDelay,
             long delayBetweenRuns) {
         this.qualysApiInvoker = qualysApiInvoker;
         this.scanContext = scanContext;
         this.initialDelay = initialDelay;
         this.delayBetweenRuns = delayBetweenRuns;
         this.scheduler = Executors.newScheduledThreadPool(NUM_THREADS);
+        currentScannerStatus.set(QualysScannerConstants.SUBMITTED);
         currentStatus.set(ScanStatus.SUBMITTED);
     }
 
@@ -79,199 +79,17 @@ public class StatusChecker {
      * Runnable class to check status task.
      */
     private final class CheckStatusTask implements Runnable {
-        // TODO: 4/3/19 Implement business logic based on response,
         @Override public void run() {
-            log.info("Start checking the status of the scan.");
+            if (log.isDebugEnabled()) {
+                CallbackUtil.persistScanLog(scanContext.getJobID(),
+                        "Start scheduled Executor Service to check scan status periodically", ScannerConstants.DEBUG);
+            }
             String status;
             try {
                 status = qualysApiInvoker.retrieveStatus(QualysScanner.host, scanContext.getScannerScanId());
-                if (status != null) {
-                    switch (status) {
-                    case QualysScannerConstants.SUBMITTED:
-                        currentStatus.set(ScanStatus.RUNNING);
-                        CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.RUNNING, null,
-                                scanContext.getScannerScanId());
-                        break;
-                    case QualysScannerConstants.RUNNING:
-                        currentStatus.set(ScanStatus.RUNNING);
-                        CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.RUNNING, null,
-                                scanContext.getScannerScanId());
-                        break;
-                    case QualysScannerConstants.FINISHED:
-                        String authStatus = qualysApiInvoker
-                                .retrieveAuthStatus(QualysScanner.host, scanContext.getScannerScanId());
-                        String resultsStatus = qualysApiInvoker
-                                .retrieveResultStatus(QualysScanner.host, scanContext.getScannerScanId());
-                        Boolean isScanAuthenticationSuccessfull = false;
-                        Boolean isScanSuccessFull = false;
-                        if (authStatus != null) {
-                            switch (authStatus) {
-                            case QualysScannerConstants.AUTH_PARTIAL:
-                                currentStatus.set(ScanStatus.FAILED);
-                                isScanAuthenticationSuccessfull = false;
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
-                                        scanContext.getScannerScanId());
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Scan is failed due to authentication failure", ScannerConstants.ERROR);
-                                break;
-                            case QualysScannerConstants.AUTH_FAILED:
-                                currentStatus.set(ScanStatus.FAILED);
-                                isScanAuthenticationSuccessfull = false;
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
-                                        scanContext.getScannerScanId());
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Scan is failed due to authentication failure", ScannerConstants.ERROR);
-                                break;
-                            case QualysScannerConstants.AUTH_SUCCESSFUL:
-                                isScanAuthenticationSuccessfull = true;
-                                break;
-                            default:
-                                isScanAuthenticationSuccessfull = false;
-                            }
-                        }
-                        if (resultsStatus != null) {
-                            switch (resultsStatus) {
-                            case QualysScannerConstants.NO_HOST_ALIVE:
-                                isScanSuccessFull = false;
-                                currentStatus.set(ScanStatus.FAILED);
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
-                                        scanContext.getScannerScanId());
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Scan is failed due NO_HOST_LIVE. Please check qualys documentation for more information",
-                                        ScannerConstants.ERROR);
-                                scheduler.shutdown();
-                                break;
-                            case QualysScannerConstants.NO_WEB_SERVICE:
-                                isScanSuccessFull = false;
-                                currentStatus.set(ScanStatus.FAILED);
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
-                                        scanContext.getScannerScanId());
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Scan is failed due NO_WEB_SERVICE. Please check qualys documentation for more information",
-                                        ScannerConstants.ERROR);
-                                scheduler.shutdown();
-                                break;
-                            case QualysScannerConstants.SCAN_RESULTS_INVALID:
-                                isScanSuccessFull = false;
-                                currentStatus.set(ScanStatus.FAILED);
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
-                                        scanContext.getScannerScanId());
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Scan is finished but scan result is invalid. Please check qualys documentation for more information",
-                                        ScannerConstants.ERROR);
-                                scheduler.shutdown();
-                                break;
-                            case QualysScannerConstants.TIME_LIMIT_EXCEEDED:
-                                isScanSuccessFull = false;
-                                Runnable scanRelauncher = new ScanRelauncher();
-                                scanRelauncher.run();
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Scan is relaunched due to TIME LIMIT EXCEED", ScannerConstants.INFO);
-                                scheduler.shutdown();
-                                break;
-                            case QualysScannerConstants.SERVICE_ERROR:
-                                isScanSuccessFull = false;
-                                currentStatus.set(ScanStatus.ERROR);
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
-                                        scanContext.getScannerScanId());
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Scan is failed due to service error. Please check qualys documentation for more information",
-                                        ScannerConstants.ERROR);
-                                scheduler.shutdown();
-                                break;
-                            case QualysScannerConstants.SCAN_INTERNAL_ERROR:
-                                isScanSuccessFull = false;
-                                currentStatus.set(ScanStatus.ERROR);
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
-                                        scanContext.getScannerScanId());
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Scan is failed due to scan internal error. Please check qualys documentation for more information",
-                                        ScannerConstants.ERROR);
-                                scheduler.shutdown();
-                                break;
-                            case QualysScannerConstants.SUCCESSFUL:
-                                isScanSuccessFull = true;
-                                currentStatus.set(ScanStatus.COMPLETED);
-                                CallbackUtil.persistScanLog(scanContext.getJobID(), "Scan is finished successfully",
-                                        ScannerConstants.INFO);
-                                scheduler.shutdown();
-                                break;
-                            }
-                        }
-                        if ((isScanAuthenticationSuccessfull) && (isScanSuccessFull)) {
-                            try {
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.COMPLETED, null,
-                                        scanContext.getScannerScanId());
-                                String[] reportTypes = { QualysScannerConstants.PDF_TYPE,
-                                        QualysScannerConstants.XML_TYPE, QualysScannerConstants.HTML_BASE64_TYPE,
-                                        QualysScannerConstants.CSV_V2_TYPE };
-                                for (String types : reportTypes) {
-                                    String createReportRequestBody = RequestBodyBuilder
-                                            .buildCreateReportRequestBody(scanContext.getWebAppId(),
-                                                    scanContext.getJobID(), types);
-                                    String reportId = qualysApiInvoker
-                                            .createReport(QualysScanner.host, createReportRequestBody);
-                                    if (reportId != null) {
-                                        CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                                "Report is successfully created : " + scanContext.getJobID(),
-                                                ScannerConstants.INFO);
-                                        if (qualysApiInvoker.downloadReport(QualysScanner.host, reportId)) {
-                                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.COMPLETED,
-                                                    null, scanContext.getScannerScanId());
-                                            CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                                    "Report is successfully downloaded : " + scanContext.getJobID(),
-                                                    ScannerConstants.INFO);
-                                            scheduler.shutdown();
-                                        }
-                                        CallbackUtil
-                                                .updateScanStatus(scanContext.getJobID(), ScanStatus.COMPLETED, null,
-                                                        scanContext.getScannerScanId());
-                                        CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                                "Unable to create report : " + scanContext.getJobID(),
-                                                ScannerConstants.INFO);
-                                        scheduler.shutdown();
-                                    }
-
-                                }
-                            } catch (TransformerException e) {
-                                CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
-                                        scanContext.getScannerScanId());
-                                CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                        "Failed to create report : " + scanContext.getJobID(), ScannerConstants.ERROR);
-                                scheduler.shutdown();
-                            }
-                        }
-
-                    case QualysScannerConstants.ERROR:
-                        CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
-                                scanContext.getScannerScanId());
-                        CallbackUtil.persistScanLog(scanContext.getJobID(), "SCAN FAILED", ScannerConstants.ERROR);
-                        scheduler.shutdown();
-                        break;
-                    case QualysScannerConstants.TIME_LIMIT_EXCEEDED:
-                        Runnable scanRelauncher = new ScanRelauncher();
-                        scanRelauncher.run();
-                        CallbackUtil
-                                .persistScanLog(scanContext.getJobID(), "Scan is relaunched due to TIME LIMIT EXCEED",
-                                        ScannerConstants.INFO);
-                        scheduler.shutdown();
-                        break;
-                    case QualysScannerConstants.SCANNER_NOT_AVAILABLE:
-                        CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
-                                scanContext.getScannerScanId());
-                        CallbackUtil.persistScanLog(scanContext.getJobID(),
-                                "Scan is failed due to due to scanner not available"
-                                        + ". Please check qualys documentation for more information\" ",
-                                ScannerConstants.ERROR);
-                        scheduler.shutdown();
-                        break;
-                    case QualysScannerConstants.CANCELLED:
-                        CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.CANCELED, null,
-                                scanContext.getScannerScanId());
-                        CallbackUtil.persistScanLog(scanContext.getJobID(), "SCAN IS CANCELLED", ScannerConstants.INFO);
-                        scheduler.shutdown();
-                        break;
-                    }
+                if (currentScannerStatus.get().equalsIgnoreCase(status)) {
+                    currentScannerStatus = new AtomicReference<>(status);
+                    updateStatus(status);
                 }
             } catch (IOException | ParserConfigurationException | SAXException e) {
                 CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
@@ -281,11 +99,203 @@ public class StatusChecker {
                 scheduler.shutdown();
             }
         }
+
+        /**
+         * Update current status to scan manager.
+         *
+         * @param status status
+         * @throws IOException                  Occurred IO exception while calling the api
+         * @throws ParserConfigurationException Occurred while retrieving the status
+         * @throws SAXException                 Occurred while retrieving the status
+         */
+        private void updateStatus(String status) throws ParserConfigurationException, SAXException, IOException {
+            if (status != null) {
+                switch (status) {
+                case QualysScannerConstants.SUBMITTED:
+                    currentStatus.set(ScanStatus.RUNNING);
+                    CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.RUNNING, null,
+                            scanContext.getScannerScanId());
+                    break;
+                case QualysScannerConstants.RUNNING:
+                    currentStatus.set(ScanStatus.RUNNING);
+                    CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.RUNNING, null,
+                            scanContext.getScannerScanId());
+                    break;
+                case QualysScannerConstants.FINISHED:
+                    String authStatus = qualysApiInvoker
+                            .retrieveAuthStatus(QualysScanner.host, scanContext.getScannerScanId());
+                    String resultsStatus = qualysApiInvoker
+                            .retrieveResultStatus(QualysScanner.host, scanContext.getScannerScanId());
+                    Boolean isScanAuthenticationSuccessfull = false;
+                    Boolean isScanSuccessFull = false;
+                    if (authStatus != null) {
+                        switch (authStatus) {
+                        case QualysScannerConstants.AUTH_PARTIAL:
+                            currentStatus.set(ScanStatus.FAILED);
+                            isScanAuthenticationSuccessfull = false;
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
+                                    scanContext.getScannerScanId());
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Scan is failed due to authentication failure", ScannerConstants.ERROR);
+                            scheduler.shutdown();
+                            break;
+                        case QualysScannerConstants.AUTH_FAILED:
+                            currentStatus.set(ScanStatus.FAILED);
+                            isScanAuthenticationSuccessfull = false;
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
+                                    scanContext.getScannerScanId());
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Scan is failed due to authentication failure", ScannerConstants.ERROR);
+                            scheduler.shutdown();
+                            break;
+                        case QualysScannerConstants.AUTH_SUCCESSFUL:
+                            isScanAuthenticationSuccessfull = true;
+                            CallbackUtil.persistScanLog(scanContext.getJobID(), "Authentication is succeed.",
+                                    ScannerConstants.INFO);
+                            break;
+                        default:
+                            isScanAuthenticationSuccessfull = false;
+                        }
+                    }
+                    if (resultsStatus != null) {
+                        switch (resultsStatus) {
+                        case QualysScannerConstants.NO_HOST_ALIVE:
+                            isScanSuccessFull = false;
+                            currentStatus.set(ScanStatus.FAILED);
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
+                                    scanContext.getScannerScanId());
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Scan is failed due NO_HOST_LIVE. Please check qualys documentation for more information",
+                                    ScannerConstants.ERROR);
+                            scheduler.shutdown();
+                            break;
+                        case QualysScannerConstants.NO_WEB_SERVICE:
+                            isScanSuccessFull = false;
+                            currentStatus.set(ScanStatus.FAILED);
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
+                                    scanContext.getScannerScanId());
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Scan is failed due NO_WEB_SERVICE. Please check qualys documentation for more information",
+                                    ScannerConstants.ERROR);
+                            scheduler.shutdown();
+                            break;
+                        case QualysScannerConstants.SCAN_RESULTS_INVALID:
+                            isScanSuccessFull = false;
+                            currentStatus.set(ScanStatus.FAILED);
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.FAILED, null,
+                                    scanContext.getScannerScanId());
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Scan is finished but scan result is invalid. Please check qualys documentation for more information",
+                                    ScannerConstants.ERROR);
+                            scheduler.shutdown();
+                            break;
+                        case QualysScannerConstants.TIME_LIMIT_EXCEEDED:
+                            isScanSuccessFull = false;
+                            Runnable scanRelauncher = new ScanReLauncher();
+                            scanRelauncher.run();
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Scan is relaunched due to TIME LIMIT EXCEED", ScannerConstants.INFO);
+                            scheduler.shutdown();
+                            break;
+                        case QualysScannerConstants.SERVICE_ERROR:
+                            isScanSuccessFull = false;
+                            currentStatus.set(ScanStatus.ERROR);
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
+                                    scanContext.getScannerScanId());
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Scan is failed due to service error. Please check qualys documentation for more information",
+                                    ScannerConstants.ERROR);
+                            scheduler.shutdown();
+                            break;
+                        case QualysScannerConstants.SCAN_INTERNAL_ERROR:
+                            isScanSuccessFull = false;
+                            currentStatus.set(ScanStatus.ERROR);
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
+                                    scanContext.getScannerScanId());
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Scan is failed due to scan internal error. Please check qualys documentation for more information",
+                                    ScannerConstants.ERROR);
+                            scheduler.shutdown();
+                            break;
+                        case QualysScannerConstants.SUCCESSFUL:
+                            isScanSuccessFull = true;
+                            currentStatus.set(ScanStatus.COMPLETED);
+                            CallbackUtil.persistScanLog(scanContext.getJobID(), "Scan is completed in Qulays end",
+                                    ScannerConstants.INFO);
+                            break;
+                        }
+                    }
+                    if ((isScanAuthenticationSuccessfull) && (isScanSuccessFull)) {
+                        try {
+                            String[] reportTypes = { QualysScannerConstants.PDF_TYPE, QualysScannerConstants.XML_TYPE,
+                                    QualysScannerConstants.HTML_BASE64_TYPE, QualysScannerConstants.CSV_V2_TYPE };
+                            for (String types : reportTypes) {
+                                String createReportRequestBody = RequestBodyBuilder
+                                        .buildCreateReportRequestBody(scanContext.getWebAppId(), scanContext.getJobID(),
+                                                types);
+                                String reportId = qualysApiInvoker
+                                        .createReport(QualysScanner.host, createReportRequestBody);
+                                if (reportId != null) {
+                                    CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                            types + " Report is successfully created : " + scanContext.getJobID(),
+                                            ScannerConstants.INFO);
+                                    qualysApiInvoker.downloadReport(QualysScanner.host, reportId);
+                                    CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                            types + " Report is successfully downloaded : " + scanContext.getJobID(),
+                                            ScannerConstants.INFO);
+                                }
+                            }
+                            // TODO: 4/23/19 Find a way to add report path
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.COMPLETED, null,
+                                    scanContext.getScannerScanId());
+                            scheduler.shutdown();
+                        } catch (TransformerException e) {
+                            CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
+                                    scanContext.getScannerScanId());
+                            CallbackUtil.persistScanLog(scanContext.getJobID(),
+                                    "Failed to create report : " + scanContext.getJobID(), ScannerConstants.ERROR);
+                            scheduler.shutdown();
+                        }
+                    }
+
+                case QualysScannerConstants.ERROR:
+                    CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
+                            scanContext.getScannerScanId());
+                    CallbackUtil.persistScanLog(scanContext.getJobID(), "SCAN FAILED", ScannerConstants.ERROR);
+                    scheduler.shutdown();
+                    break;
+                case QualysScannerConstants.TIME_LIMIT_EXCEEDED:
+                    Runnable scanRelauncher = new ScanReLauncher();
+                    scanRelauncher.run();
+                    CallbackUtil.persistScanLog(scanContext.getJobID(), "Scan is relaunched due to TIME LIMIT EXCEED",
+                            ScannerConstants.INFO);
+                    scheduler.shutdown();
+                    break;
+                case QualysScannerConstants.SCANNER_NOT_AVAILABLE:
+                    CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.ERROR, null,
+                            scanContext.getScannerScanId());
+                    CallbackUtil.persistScanLog(scanContext.getJobID(),
+                            "Scan is failed due to due to scanner not available"
+                                    + ". Please check qualys documentation for more information\" ",
+                            ScannerConstants.ERROR);
+                    scheduler.shutdown();
+                    break;
+                case QualysScannerConstants.CANCELLED:
+                    CallbackUtil.updateScanStatus(scanContext.getJobID(), ScanStatus.CANCELED, null,
+                            scanContext.getScannerScanId());
+                    CallbackUtil.persistScanLog(scanContext.getJobID(), "SCAN IS CANCELLED", ScannerConstants.INFO);
+                    scheduler.shutdown();
+                    break;
+                }
+            }
+        }
     }
 
-    private final class ScanRelauncher implements Runnable {
+    /**
+     * ReLaunch Scan.
+     */
+    private final class ScanReLauncher implements Runnable {
         @Override public void run() {
-            log.info("Relaunching Scan");
             try {
                 qualysApiInvoker
                         .launchScan(QualysScanner.host, RequestBodyBuilder.buildLaunchScanRequestBody(scanContext));

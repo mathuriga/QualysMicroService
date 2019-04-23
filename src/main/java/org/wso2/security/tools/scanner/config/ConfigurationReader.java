@@ -44,9 +44,8 @@ public class ConfigurationReader {
      * @throws FileNotFoundException
      */
     public static void loadConfiguration() throws FileNotFoundException {
-        String configurationFile = ScannerConstants.RESOURCE_FILE_PATH + File.separator +
-                ScannerConstants.CONFIGURTION_FILE_NAME;
-
+        String configurationFile =
+                ScannerConstants.RESOURCE_FILE_PATH + File.separator + ScannerConstants.CONFIGURTION_FILE_NAME;
         loadConfiguration(configurationFile);
     }
 

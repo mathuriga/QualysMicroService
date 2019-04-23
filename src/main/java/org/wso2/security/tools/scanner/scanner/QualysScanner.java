@@ -20,7 +20,6 @@
 
 package org.wso2.security.tools.scanner.scanner;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -36,13 +35,11 @@ import org.w3c.dom.NodeList;
 import org.wso2.security.tools.scanner.QualysScannerConstants;
 import org.wso2.security.tools.scanner.ScannerConstants;
 import org.wso2.security.tools.scanner.config.ConfigurationReader;
-import org.wso2.security.tools.scanner.config.QualysScannerParam;
 import org.wso2.security.tools.scanner.config.ScanContext;
 import org.wso2.security.tools.scanner.exception.InvalidRequestException;
 import org.wso2.security.tools.scanner.exception.ScannerException;
 import org.wso2.security.tools.scanner.handler.QualysApiInvoker;
 import org.wso2.security.tools.scanner.handler.QualysScanHandler;
-import org.wso2.security.tools.scanner.handler.StatusChecker;
 import org.wso2.security.tools.scanner.utils.CallbackUtil;
 import org.wso2.security.tools.scanner.utils.ErrorMessage;
 import org.wso2.security.tools.scanner.utils.QualysPropertyEnums;
@@ -54,11 +51,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.xml.parsers.DocumentBuilder;
@@ -72,7 +67,6 @@ import javax.xml.parsers.ParserConfigurationException;
 
     private final Log log = LogFactory.getLog(QualysScanner.class);
     public static String host;
-    private QualysScannerParam qualysScannerParam;
     private QualysScanHandler qualysScanHandler;
     private ScanContext scanContext;
 
@@ -83,12 +77,10 @@ import javax.xml.parsers.ParserConfigurationException;
             QualysApiInvoker qualysApiInvoker = new QualysApiInvoker();
             qualysApiInvoker.setBasicAuth(setCredentials());
             this.qualysScanHandler = new QualysScanHandler(qualysApiInvoker);
-            // TODO: 4/3/19 remove this 
-            //            qualysScanHandler.initiateQualysScanner(host);
         } catch (ScannerException e) {
             log.error("Failed to initiate Qualys Scanner. ", e);
         } catch (FileNotFoundException e) {
-            log.error("Failed to initiate Qualys Scanner.Configuration file is not provided", e);
+            log.error("Failed to initiate Qualys Scanner. Configuration file is not provided", e);
         }
     }
 
@@ -97,47 +89,41 @@ import javax.xml.parsers.ParserConfigurationException;
         String authScriptId;
         String scannerScanId;
         try {
-            if (validateParameters(scannerRequest)) {
+            if (isValidateParameters(scannerRequest)) {
+                CallbackUtil
+                        .persistScanLog(scannerRequest.getJobId(), "Parameters are validated", ScannerConstants.ERROR);
+                // Prepare Web Application for launching scan.
                 authScriptId = qualysScanHandler.prepareScan(scannerRequest.getAppId(), scannerRequest.getJobId(),
                         scannerRequest.getParameterMap().get(QualysScannerConstants.QUALYS_WEBAPP_TAG_NAME).get(0),
                         scannerRequest.getFileMap(), host);
-                ScanContext scanContext = new ScanContext();
+                // Set ScanContext Object.
+                scanContext = new ScanContext();
                 scanContext.setJobID(scannerRequest.getJobId());
                 scanContext.setWebAppId(scannerRequest.getAppId());
                 scanContext.setAuthId(authScriptId);
-                scanContext.setProfileId(
-                        scannerRequest.getParameterMap().get(QualysScannerConstants.PROFILE_NAME_KEYWORD).get(0));
+                scanContext
+                        .setProfileId(scannerRequest.getParameterMap().get(QualysScannerConstants.PROFILE_ID).get(0));
                 scanContext.setType(scannerRequest.getParameterMap().get(QualysScannerConstants.TYPE_KEYWORD).get(0));
                 scanContext.setScannerApplianceType(
                         scannerRequest.getParameterMap().get(QualysScannerConstants.SCANNER_APPILIANCE_TYPE_KEYWORD)
                                 .get(0));
-                if (Boolean.parseBoolean(
-                        scannerRequest.getParameterMap().get(QualysScannerConstants.PROGRESSIVE_SCAN).get(0))) {
-                    scanContext.setProgressiveScanning(QualysScannerConstants.ENABLED);
-                } else {
-                    scanContext.setProgressiveScanning(QualysScannerConstants.DISABLED);
-                }
-
+                scanContext.setProgressiveScanning(
+                        scannerRequest.getParameterMap().get(QualysScannerConstants.PROGRESSIVE_SCAN).get(0));
+                // Launch Scan
                 scannerScanId = qualysScanHandler.launchScan(scanContext, host);
-
                 if (scannerScanId != null) {
                     responseEntity = new ResponseEntity<>(HttpStatus.ACCEPTED);
                 }
             }
-
         } catch (ScannerException e) {
-            String message =
-                    "Failed to start scan " + scannerRequest.getProductName() + " due to invalid " + "parameters : " + e
-                            .getMessage();
-            responseEntity = new ResponseEntity<>(new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), message),
+            String message = "Failed to start scan " + scannerRequest.getProductName() + e.getMessage();
+            responseEntity = new ResponseEntity<>(
+                    new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to start scan"),
                     HttpStatus.INTERNAL_SERVER_ERROR);
-            //                    CallbackUtil.updateScanStatus(scannerRequest.getJobId(), ScanStatus.ERROR, null, null);
-            //                    CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.ERROR);
-            log.error(message);
+            CallbackUtil.updateScanStatus(scannerRequest.getJobId(), ScanStatus.ERROR, null, null);
+            CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.ERROR);
         } catch (InvalidRequestException e) {
-            String message = "Error occurred while submitting the start scan request since "
-                    + "given application is not available : " + scannerRequest.getAppId();
-
+            String message = "Error occurred while submitting the start scan request since invalid parameters given";
             CallbackUtil.updateScanStatus(scannerRequest.getJobId(), ScanStatus.ERROR, null, null);
             CallbackUtil.persistScanLog(scannerRequest.getJobId(), message, ScannerConstants.ERROR);
             responseEntity = new ResponseEntity<>(new ErrorMessage(HttpStatus.BAD_REQUEST.value(), message),
@@ -147,9 +133,9 @@ import javax.xml.parsers.ParserConfigurationException;
     }
 
     @Override public ResponseEntity cancelScan(ScannerRequest scannerRequest) {
-        ResponseEntity responseEntity = null;
+        ResponseEntity responseEntity;
         try {
-            qualysScanHandler.calcelScan(host, scannerRequest.getJobId(), "");
+            qualysScanHandler.cancelScan(host, scannerRequest.getJobId(), "");
             responseEntity = new ResponseEntity<>(new ErrorMessage(HttpStatus.ACCEPTED.value(), "Scan is cancelled"),
                     HttpStatus.ACCEPTED);
         } catch (ScannerException e) {
@@ -163,16 +149,23 @@ import javax.xml.parsers.ParserConfigurationException;
         return responseEntity;
     }
 
-    private Boolean validateParameters(ScannerRequest scannerRequest) throws InvalidRequestException {
-        String errorMessage = null;
+    /**
+     * Validate Scan Parameters related to Qualys Scanner.
+     *
+     * @param scannerRequest Scanner Request
+     * @return True if all parameters are valid
+     * @throws InvalidRequestException throws if any of the parameter in not valid.
+     */
+    private Boolean isValidateParameters(ScannerRequest scannerRequest) throws InvalidRequestException {
+        String errorMessage;
+        // Validate webAppId.
         if (!StringUtils.isEmpty(scannerRequest.getAppId()) && !scannerRequest.getAppId()
                 .matches(QualysScannerConstants.INTEGER_REGEX)) {
             errorMessage = "Application Id is not provided or Invalid Application ID";
             throw new InvalidRequestException(errorMessage);
         }
-
         Map<String, List<String>> parameterMap = scannerRequest.getParameterMap();
-
+        // Validate profile id.
         if (!StringUtils.isEmpty(parameterMap.get(QualysScannerConstants.PROFILE_ID).get(0)) && !scannerRequest
                 .getAppId().matches(QualysScannerConstants.INTEGER_REGEX)) {
             errorMessage = "Profile Id is not provided or Invalid Profile Id";
@@ -184,12 +177,18 @@ import javax.xml.parsers.ParserConfigurationException;
             errorMessage = "Scanner Appliance Type is not provided or invalid";
             throw new InvalidRequestException(errorMessage);
         }
+        //
+        //        if (!EnumUtils.isValidEnum(QualysPropertyEnums.Type.class,
+        //                parameterMap.get(QualysScannerConstants.TYPE_KEYWORD).get(0))) {
+        //            errorMessage = "Type of the scan is not provided or invalid";
+        //            throw new InvalidRequestException(errorMessage);
+        //        }
 
-        if (!EnumUtils.isValidEnum(QualysPropertyEnums.Type.class,
-                parameterMap.get(QualysScannerConstants.TYPE_KEYWORD).get(0))) {
-            errorMessage = "Type of the scan is not provided or invalid";
-            throw new InvalidRequestException(errorMessage);
-        }
+        //        if(!parameterMap.get(QualysScannerConstants.TYPE_KEYWORD).get(0).equalsIgnoreCase("VULNERABILITY") ||
+        //                !parameterMap.get(QualysScannerConstants.TYPE_KEYWORD).get(0).equalsIgnoreCase("DISCOVERY") ){
+        //            errorMessage = "Type of the scan is not provided or invalid";
+        //            throw new InvalidRequestException(errorMessage);
+        //        }
 
         List<String> authFiles = scannerRequest.getFileMap().get(QualysScannerConstants.AUTHENTICATION_SCRIPTS);
         if (authFiles.size() != 0) {
@@ -205,6 +204,8 @@ import javax.xml.parsers.ParserConfigurationException;
                     }
                 }
             }
+
+        } else {
             errorMessage = "Authentication script is not provided";
             throw new InvalidRequestException(errorMessage);
         }
@@ -220,12 +221,9 @@ import javax.xml.parsers.ParserConfigurationException;
      */
     private char[] setCredentials() throws ScannerException {
         char[] basicAuth;
-        // TODO: 4/3/19 change it to char 
         char[] qualysUsername = ConfigurationReader.getConfigProperty(QualysScannerConstants.USERNAME).toCharArray();
         char[] qualysPassword = ConfigurationReader.getConfigProperty(QualysScannerConstants.PASSWORD).toCharArray();
-        // TODO: 4/3/19 rename
-
-        String credential = Arrays.toString(qualysUsername) + ":" + Arrays.toString(qualysPassword);
+        String credential = new String(qualysUsername) + ":" + new String(qualysPassword);
         try {
             basicAuth = new String(new Base64().encode(credential.getBytes()), "UTF-8").toCharArray();
             Arrays.fill(qualysUsername, '0');

@@ -261,14 +261,14 @@ public class RequestBodyBuilder {
         Element target = doc.createElement(QualysScannerConstants.TARGET);
         wasScan.appendChild(target);
 
-        Element webApp = doc.createElement(QualysScannerConstants.QUALYS_WEBAPP_TAG_NAME);
+        Element webApp = doc.createElement("webApp");
         target.appendChild(webApp);
 
         Element webAppId = doc.createElement(QualysScannerConstants.ID_KEYWORD);
         webAppId.appendChild(doc.createTextNode(scanContext.getWebAppId()));
         webApp.appendChild(webAppId);
 
-        Element webAppAuthRecord = doc.createElement(QualysScannerConstants.WEB_APP_AUTH_RECORD);
+        Element webAppAuthRecord = doc.createElement("webAppAuthRecord");
         target.appendChild(webAppAuthRecord);
 
         Element webAppAuthRecordId = doc.createElement(QualysScannerConstants.ID_KEYWORD);

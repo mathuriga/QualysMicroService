@@ -20,8 +20,6 @@
 
 package org.wso2.security.tools.scanner;
 
-import org.wso2.security.tools.scanner.utils.ScanStatus;
-
 /**
  * Constants related to Qualys Scanner
  */
@@ -46,18 +44,10 @@ public class QualysScannerConstants {
     public static final String QUALYS_WEB_APP_REPORT_CREATE_API="/qps/rest/3.0/create/was/report";
     public static final String QUALYS_REPORT_DOWNLOAD_API="/qps/rest/3.0/download/was/report/";
 
-    //Paths of the required files which are generated at Qualys Scanner initializing time
-    public static final String QUALYS_WEB_APPLICATION_LIST_FILE_PATH = ScannerConstants.RESOURCE_FILE_PATH
-            .concat("/qualysWebApplications.xml");
-    public static final String QUALYS_AUTHENTICATION_LIST_FILE_PATH = ScannerConstants.RESOURCE_FILE_PATH
-            .concat("/qualysAuthenticationScripts.xml");
-    public static final String QUALYS_OPTIONAL_PROFILE_LIST_FILE_PATH = ScannerConstants.RESOURCE_FILE_PATH
-            .concat("/qualysOptionalProfile.xml");
-    //    public static final String QUALYS_CRAWLING_LIST_FILE_PATH = ScannerConstants.RESOURCE_FILE_PATH
-    //            .concat("/qualysCrawlingScripts.xml");
 
     public static final String QUALYS_SCAN_NAME_PREFIX = "New Discovery scan launch from API : ";
-    public static final long DELAY_BETWEEN_STATUS_CHECK_TASK = 15;
+    public static final String INITAL_DELAY="initialDelay";
+    public static final String DELAY_BETWEEN_STATUS_CHECK_TASK = "delayBetweenChecks";
 
     //Qualys Tag Names
     public static final String WEBAPPS_TAG_NAME="webapps";
@@ -98,9 +88,9 @@ public class QualysScannerConstants {
     public static final String CONFIG_KEYWORD="config";
     public static final String WEB_APP_REPORT_KEYWORD="webAppReport";
 
-    public static final String SCAN_STATUS="status";
-    public static final String AUTH_STATUS="authStatus";
-    public static final String RESULTS_STATUS="resultsStatus";
+    public static final String SCAN_STATUS_TAG ="status";
+    public static final String AUTH_STATUS_TAG ="authStatus";
+    public static final String RESULTS_STATUS_TAG ="resultsStatus";
 
     //Report Types
     public static final String PDF_TYPE="PDF";
